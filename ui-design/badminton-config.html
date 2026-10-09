@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Badminton config</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button,input{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1180px; box-sizing: border-box; background: #F5F7FA; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; display: flex; flex-direction: column">
+
+  <div style="background: #2268A6; color: #FFFFFF; padding: 4px 8px 14px; border-radius: 0 0 26px 26px">
+    <div style="display: flex; align-items: center; justify-content: space-between; height: 48px">
+      <a href="Set2Badminton.dc.html" aria-label="Back to scoreboard" style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #FFFFFF">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.32em">BADMINTON</div>
+      <div style="width: 44px"></div>
+    </div>
+    <div style="margin: 0 8px; border: 1.5px solid rgba(255,255,255,0.28); border-radius: 14px; display: flex; align-items: stretch; height: 64px">
+      <div style="flex: 1; padding: 0 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px">
+        <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.22em; opacity: 0.8">CONFIG</div>
+        <div style="font-size: 20px; font-weight: 800">Match rules</div>
+      </div>
+      <div style="border-left: 1.5px solid rgba(255,255,255,0.28); width: 72px; display: flex; align-items: center; justify-content: center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F2C94C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding: 16px 12px 24px; display: flex; flex-direction: column; gap: 12px">
+
+    <div style="background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #5A6478">POINTS TO WIN</div>
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <button aria-label="Decrease points to win" style="width: 52px; height: 52px; border: none; border-radius: 14px; background: #EEF1F5; color: #141A26; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+        <div style="display: flex; gap: 4px; background: #141A26; padding: 6px; border-radius: 10px">
+          <span style="width: 40px; height: 54px; border-radius: 6px; background: #262D3B; color: #F2C94C; font-size: 36px; font-weight: 800; display: flex; align-items: center; justify-content: center">2</span>
+          <span style="width: 40px; height: 54px; border-radius: 6px; background: #262D3B; color: #F2C94C; font-size: 36px; font-weight: 800; display: flex; align-items: center; justify-content: center">1</span>
+        </div>
+        <button aria-label="Increase points to win" style="width: 52px; height: 52px; border: none; border-radius: 14px; background: #EEF1F5; color: #141A26; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+        <button style="height: 40px; border: 1.5px solid #E3E7EE; border-radius: 10px; background: #FFFFFF; color: #3A4458; font-size: 14px; font-weight: 700">11</button>
+        <button style="height: 40px; border: 1.5px solid #E3E7EE; border-radius: 10px; background: #FFFFFF; color: #3A4458; font-size: 14px; font-weight: 700">15</button>
+        <button aria-pressed="true" style="height: 40px; border: 1.5px solid #2268A6; border-radius: 10px; background: #E8F0F8; color: #1F5F99; font-size: 14px; font-weight: 800">21</button>
+        <button style="height: 40px; border: 1.5px solid #E3E7EE; border-radius: 10px; background: #FFFFFF; color: #3A4458; font-size: 14px; font-weight: 700">30</button>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #5A6478">AUTO SWAP SIDES</div>
+      <div role="group" aria-label="Auto swap sides" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #EEF1F5; border-radius: 12px; padding: 3px; height: 46px; box-sizing: border-box">
+        <button aria-pressed="false" style="border: none; background: transparent; border-radius: 9px; font-size: 14px; font-weight: 700; color: #5A6478">Off</button>
+        <button aria-pressed="true" style="border: none; background: #FFFFFF; border-radius: 9px; font-size: 14px; font-weight: 800; color: #141A26; box-shadow: 0 1px 3px rgba(20,26,38,0.15)">Every N pts</button>
+        <button aria-pressed="false" style="border: none; background: transparent; border-radius: 9px; font-size: 14px; font-weight: 700; color: #5A6478">At half</button>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; background: #F5F7FA; border-radius: 12px; padding: 6px 6px 6px 14px">
+        <label for="swapEvery" style="font-size: 14px; font-weight: 600; color: #3A4458">Swap every</label>
+        <div style="display: flex; align-items: center; gap: 6px">
+          <button aria-label="Fewer points" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: #FFFFFF; color: #141A26; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+          <input id="swapEvery" value="5" inputmode="numeric" style="width: 44px; height: 40px; box-sizing: border-box; border: 1.5px solid #D3D8E1; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 800; color: #141A26; background: #FFFFFF">
+          <button aria-label="More points" style="width: 40px; height: 40px; border: none; border-radius: 10px; background: #FFFFFF; color: #141A26; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+          <span style="font-size: 14px; font-weight: 600; color: #3A4458; padding-right: 4px">pts</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #5A6478">SCORE THICKNESS</div>
+      <div style="display: flex; gap: 8px; height: 96px">
+        <div style="flex: 1; border-radius: 14px; background: #DD534C; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 60px; font-weight: 800; line-height: 1">9</div>
+        <div style="flex: 1; border-radius: 14px; background: #2F62D6; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 60px; font-weight: 800; line-height: 1">18</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="font-size: 15px; font-weight: 400; color: #5A6478">Aa</span>
+        <div style="flex: 1; position: relative; height: 24px; display: flex; align-items: center">
+          <div style="position: absolute; left: 0; right: 0; height: 6px; border-radius: 3px; background: #E3E7EE"></div>
+          <div style="position: absolute; left: 0; width: 82%; height: 6px; border-radius: 3px; background: #2268A6"></div>
+          <div style="position: absolute; left: 82%; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; background: #FFFFFF; border: 3px solid #2268A6; box-sizing: border-box; box-shadow: 0 1px 4px rgba(20,26,38,0.2)"></div>
+        </div>
+        <span style="font-size: 15px; font-weight: 900; color: #141A26">Aa</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #5A6478">TEAM COLOURS</div>
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div style="width: 64px; font-size: 14px; font-weight: 700">Team A</div>
+          <div style="display: flex; gap: 8px">
+            <button aria-label="Red, selected" aria-pressed="true" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #DD534C; box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 5px #141A26"></button>
+            <button aria-label="Blue, used by Team B" disabled style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #2F62D6; opacity: 0.25; position: relative"><svg width="40" height="40" viewBox="0 0 40 40" style="position: absolute; left: 0; top: 0"><path d="M10 30L30 10" stroke="#141A26" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+            <button aria-label="Orange" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #E8833A"></button>
+            <button aria-label="Purple" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #9B5DE5"></button>
+            <button aria-label="Slate" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #4A5568"></button>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div style="width: 64px; font-size: 14px; font-weight: 700">Team B</div>
+          <div style="display: flex; gap: 8px">
+            <button aria-label="Red, used by Team A" disabled style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #DD534C; opacity: 0.25; position: relative"><svg width="40" height="40" viewBox="0 0 40 40" style="position: absolute; left: 0; top: 0"><path d="M10 30L30 10" stroke="#141A26" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+            <button aria-label="Blue, selected" aria-pressed="true" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #2F62D6; box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 5px #141A26"></button>
+            <button aria-label="Orange" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #E8833A"></button>
+            <button aria-label="Purple" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #9B5DE5"></button>
+            <button aria-label="Slate" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #4A5568"></button>
+          </div>
+        </div>
+      </div>
+      <button style="height: 46px; border: 1.5px solid #E3E7EE; border-radius: 12px; background: #FFFFFF; color: #141A26; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14"/><path d="M15 5l3 3-3 3"/><path d="M20 16H6"/><path d="M9 13l-3 3 3 3"/></svg>Swap colours
+      </button>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #5A6478">PLAYERS</div>
+      <a href="Set2Players.dc.html" style="text-decoration: none; color: #141A26; display: flex; align-items: center; gap: 12px; min-height: 52px">
+        <div style="display: flex">
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #E8F0F8; color: #1F5F99; border: 2px solid #FFFFFF; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center">B</span>
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #E8F0F8; color: #1F5F99; border: 2px solid #FFFFFF; margin-left: -10px; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center">W</span>
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #E8F0F8; color: #1F5F99; border: 2px solid #FFFFFF; margin-left: -10px; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center">T</span>
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #141A26; color: #FFFFFF; border: 2px solid #FFFFFF; margin-left: -10px; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">+2</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <div style="font-size: 15px; font-weight: 700">Manage players</div>
+          <div style="font-size: 13px; color: #5A6478">5 saved players</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6478" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clear match history</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+
+  <div style="background: #2268A6; height: 126px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.55)"></div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 230px; background: #FFFFFF; border-radius: 26px 26px 0 0; padding: 26px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 22px; font-weight: 800; margin-bottom: 10px">Match history</div>
+    <div style="height: 104px; border-radius: 18px; border: 1.5px solid #E3E7EE"></div>
+    <div style="height: 104px; border-radius: 18px; border: 1.5px solid #E3E7EE"></div>
+    <div style="height: 104px; border-radius: 18px; border: 1.5px solid #E3E7EE"></div>
+  </div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.45)"></div>
+
+  <div role="alertdialog" aria-labelledby="clearTitle" aria-describedby="clearDesc" style="position: absolute; left: 16px; right: 16px; top: 300px; background: #FFFFFF; border-radius: 24px; padding: 22px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; box-shadow: 0 20px 50px rgba(14,18,26,0.3)">
+    <div style="width: 56px; height: 56px; border-radius: 18px; background: #FDF3F2; color: #B42318; display: flex; align-items: center; justify-content: center">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div id="clearTitle" style="font-size: 20px; font-weight: 800">Clear match history?</div>
+      <div id="clearDesc" style="font-size: 15px; line-height: 1.45; color: #5A6478">All <span style="font-weight: 800; color: #141A26">3 recorded games</span> will be deleted. This can't be undone.</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 6px">
+      <button style="height: 50px; border: none; border-radius: 14px; background: #B42318; color: #FFFFFF; font-size: 15px; font-weight: 800">Clear 3 games</button>
+      <a href="Set2History.dc.html" style="height: 50px; border-radius: 14px; background: #EEF1F5; color: #141A26; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; text-decoration: none">Keep history</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

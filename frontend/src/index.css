@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+/* A horizontal scrollbar that stays visible instead of fading out (WebKit/Blink).
+   Styling the scrollbar opts out of the auto-hiding overlay scrollbar on macOS. */
+.scrollbar-always::-webkit-scrollbar {
+  height: 6px;
+}
+.scrollbar-always::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.scrollbar-always::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--color-ink);
+}

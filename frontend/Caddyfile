@@ -1,0 +1,18 @@
+# SITE_ADDRESS: your domain (e.g. rallypoint.example.com) for automatic HTTPS,
+# or ":80" for plain HTTP (e.g. behind another proxy). Defaults to ":80".
+{$SITE_ADDRESS::80} {
+	root * /srv
+	encode zstd gzip
+
+	# Built assets have content hashes in their names, so they can be cached forever.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Everything else (index.html and app routes) is revalidated so updates show up at once.
+	@pages not path /assets/*
+	header @pages Cache-Control "no-cache"
+
+	# Client-side routes like /sports/badminton fall back to the app's index.html.
+	try_files {path} /index.html
+	file_server
+}
