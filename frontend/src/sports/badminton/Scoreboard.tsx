@@ -28,9 +28,10 @@ import {
   describeRedo,
   describeUndo,
   hasRallies,
-  isSwapTrigger,
+  otherTeam,
   replay,
   screenScore,
+  shouldSwitchSides,
   teamOn,
   type RallyStep,
   type SideKey,
@@ -74,7 +75,8 @@ export function Scoreboard() {
     const score = court.teams[team].score + 1
     const rules = { totalPoints: config.totalPoints, sideSwitch: config.sideSwitch }
     if (score === config.totalPoints) setMatchPointTeam(team)
-    if (isSwapTrigger(score, rules)) toast(`Players switched sides (reached ${score})`)
+    const otherScore = court.teams[otherTeam(team)].score
+    if (shouldSwitchSides(score, otherScore, rules)) toast(`Players switched sides (reached ${score})`)
     dispatch({
       type: 'rally',
       team,

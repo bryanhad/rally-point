@@ -68,11 +68,12 @@ function applyAction(state: GameState, action: GameAction): GameState {
     case 'rally': {
       const { court } = replay(state)
       const score = court.teams[action.team].score + 1
+      const otherScore = court.teams[otherTeam(action.team)].score
       return append(state, {
         type: 'rally',
         at: action.at,
         winner: action.team,
-        swapEnds: isSwapTrigger(score, action.rules),
+        swapEnds: shouldSwitchSides(score, otherScore, action.rules),
       })
     }
     case 'undo':
@@ -286,6 +287,12 @@ export function isSwapTrigger(score: number, { totalPoints, sideSwitch }: Rules)
     case 'half':
       return score === Math.ceil(totalPoints / 2)
   }
+}
+
+// Sides switch only for the first team to reach a threshold; if the other team is already
+// at or past that score, it reached the threshold first and the switch has happened.
+export function shouldSwitchSides(scorerScore: number, otherScore: number, rules: Rules): boolean {
+  return isSwapTrigger(scorerScore, rules) && otherScore < scorerScore
 }
 
 // Snapshot of the finished game; names are copied so later renames don't alter history.
