@@ -148,23 +148,40 @@ function ringColor(serving: boolean, receiving: boolean) {
   return 'rgba(255,255,255,0.35)'
 }
 
+// Width of the white initials section of a chip.
+const INITIALS_ZONE = 32
+
 function PlayerChip({ name, half, color, serving, receiving, crowned, chipRef, onClick }: PlayerChipProps) {
+  const ring = ringColor(serving, receiving)
   // The shuttle sits on the side facing the net (the middle of the screen).
   return (
     <div className={`relative flex max-w-full items-center gap-1 ${half === 'right' ? 'flex-row-reverse' : ''}`}>
+      {/* Outer layer is the ring (ring colour painted over the team colour, like the old border);
+          the inner pill is one hard-stop gradient (white initials zone, then team colour), so no
+          separate white element ever sits on top of the team colour and no thin fringe shows. */}
       <button
         ref={chipRef}
         type="button"
         onClick={onClick}
         disabled={!onClick}
-        style={{ backgroundColor: color, borderColor: ringColor(serving, receiving) }}
+        style={{ background: `linear-gradient(${ring}, ${ring}), ${color}` }}
         // As wide as the name; very long names are truncated to fit the quarter court.
-        className={`flex h-[34px] max-w-full min-w-0 items-center gap-1.5 rounded-full border-[3px] text-[13px] font-bold text-white enabled:active:opacity-80 ${half === 'right' ? 'flex-row-reverse pr-[3px] pl-3' : 'pr-3 pl-[3px]'}`}
+        className="flex h-9 max-w-full min-w-0 rounded-full p-[3px] text-[13px] font-bold text-white enabled:active:opacity-80"
       >
-        <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-white text-[11px] text-ink">
-          {initials(name)}
+        <span
+          className={`flex min-w-0 flex-1 items-center overflow-hidden rounded-full ${half === 'right' ? 'flex-row-reverse' : ''}`}
+          style={{
+            background: `linear-gradient(to ${half === 'right' ? 'left' : 'right'}, #FFFFFF ${INITIALS_ZONE}px, ${color} ${INITIALS_ZONE}px)`,
+          }}
+        >
+          <span
+            className="flex shrink-0 items-center justify-center self-stretch text-[11px] text-ink"
+            style={{ width: INITIALS_ZONE }}
+          >
+            {initials(name)}
+          </span>
+          <span className={`truncate ${half === 'right' ? 'pr-1.5 pl-3' : 'pr-3 pl-1.5'}`}>{name}</span>
         </span>
-        <span className="truncate">{name}</span>
       </button>
       {/* Worn on the avatar side of the chip: top-left on the left half, top-right on the right. */}
       {crowned && (
