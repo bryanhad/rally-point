@@ -159,7 +159,9 @@ type PlayerChipProps = {
   serving: boolean
   receiving: boolean
   crowned: boolean
-  chipRef: (el: HTMLButtonElement | null) => void
+  // The shuttle beside the server's chip; off when the chip is shown outside the court.
+  showShuttle?: boolean
+  chipRef?: (el: HTMLButtonElement | null) => void
   onClick?: () => void
 }
 
@@ -173,7 +175,17 @@ function ringColor(serving: boolean, receiving: boolean) {
 // Width of the white initials section of a chip.
 const INITIALS_ZONE = 32
 
-function PlayerChip({ name, half, color, serving, receiving, crowned, chipRef, onClick }: PlayerChipProps) {
+export function PlayerChip({
+  name,
+  half,
+  color,
+  serving,
+  receiving,
+  crowned,
+  showShuttle = true,
+  chipRef,
+  onClick,
+}: PlayerChipProps) {
   const ring = ringColor(serving, receiving)
   // The shuttle sits on the side facing the net (the middle of the screen).
   return (
@@ -211,7 +223,7 @@ function PlayerChip({ name, half, color, serving, receiving, crowned, chipRef, o
           className={`absolute -top-3.5 ${half === 'left' ? '-left-1.5 -rotate-[18deg]' : '-right-1.5 rotate-[18deg]'}`}
         />
       )}
-      {serving && <Shuttle className="shrink-0" />}
+      {serving && showShuttle && <Shuttle className="shrink-0" />}
     </div>
   )
 }

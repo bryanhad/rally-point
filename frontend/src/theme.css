@@ -68,6 +68,11 @@
   max-height: 75vh;
   max-height: 75dvh;
 }
+/* Same 75%, but as the actual height (for sheets that shouldn't resize with their content). */
+.sheet-h {
+  height: 75vh;
+  height: 75dvh;
+}
 
 /* Range slider (score thickness): 6px track filled up to --fill, 24px white thumb with a
    blue ring. */

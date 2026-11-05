@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from '../../components/ui/BottomSheet'
 import { writeLastSport } from '../../lib/lastSport'
@@ -9,6 +9,7 @@ import { FlipDigits } from '../../components/ui/FlipDigits'
 import { BandCaption, FrameCell, HeaderBand } from '../../components/ui/HeaderBand'
 import {
   BackIcon,
+  CheckIcon,
   FlagIcon,
   GearIcon,
   RedoIcon,
@@ -20,7 +21,7 @@ import {
 import { Button, SectionLabel } from '../../components/ui/primitives'
 import { Avatar } from './Avatar'
 import { useBadminton } from './context'
-import { Court } from './Court'
+import { Court, PlayerChip } from './Court'
 import {
   allPlayers,
   canRedo,
@@ -31,6 +32,8 @@ import {
   otherTeam,
   replay,
   screenScore,
+  serverId,
+  TEAM_IDS,
   shouldSwitchSides,
   teamOn,
   type RallyStep,
@@ -40,7 +43,7 @@ import { HistorySheet } from './HistorySheet'
 import { RallySheet } from './RallySheet'
 import { Crown, Racket, Rackets, ServerIcon, SidesIcon } from './icons'
 import { initials } from './initials'
-import { TEAM_COLORS, type Config, type HistoryEntry, type SideSwitch, type TeamId } from './schema'
+import { TEAM_COLORS, type Config, type HistoryEntry, type Player, type SideSwitch, type TeamId } from './schema'
 
 const SIDES: SideKey[] = ['left', 'right']
 
@@ -143,7 +146,8 @@ export function Scoreboard() {
     .filter((s): s is RallyStep => s.event.type === 'rally')
     .map((step, i) => ({ step, number: i + 1 }))
   const rallies = [...chronological].reverse()
-  const onCourt = new Set([...court.teams.a.ids, ...court.teams.b.ids])
+  // Which team each on-court player belongs to (for the picker's indicator).
+  const teamOfPlayer = new Map<string, TeamId>(TEAM_IDS.flatMap((t) => court.teams[t].ids.map((id) => [id, t] as const)))
 
   const colorName = (team: TeamId) => {
     const name = config.teamColors[team]
@@ -395,29 +399,33 @@ export function Scoreboard() {
         open={picker !== null}
         onClose={() => setPicker(null)}
         eyebrow={picker ? `Team ${colorName(picker.team)}` : ''}
-        title={pickedId ? nameOf(pickedId) : 'Player'}
+        title="Change player"
+        fullHeight
       >
-        <div className="px-4 pt-4 pb-6">
-          <SectionLabel className="mb-2 px-1 text-[11px]">Replace with</SectionLabel>
-          <ul className="overflow-hidden rounded-card border-[1.5px] border-line">
-            {players.map((player) => (
-              <li key={player.id} className="border-b border-soft last:border-b-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (picker) dispatch({ type: 'assignPlayer', ...picker, playerId: player.id, at: Date.now() })
-                    setPicker(null)
-                  }}
-                  className="flex min-h-[52px] w-full items-center gap-3 px-3 text-left active:bg-softer"
-                >
-                  <Avatar name={player.name} />
-                  <span className="min-w-0 flex-1 truncate text-base font-semibold">{player.name}</span>
-                  {onCourt.has(player.id) && <span className="text-xs font-bold text-muted">On court</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <PlayerPicker
+          players={players}
+          teamOfPlayer={teamOfPlayer}
+          colors={config.teamColors}
+          current={
+            picker && pickedId ? (
+              // Read-only copy of the chip that was tapped.
+              <PlayerChip
+                name={nameOf(pickedId)}
+                half="left"
+                color={TEAM_COLORS[config.teamColors[picker.team]]}
+                serving={pickedId === serverId(court)}
+                // The receiver's solid white ring would vanish on the white sheet.
+                receiving={false}
+                crowned={false}
+                showShuttle={false}
+              />
+            ) : null
+          }
+          onSelect={(playerId) => {
+            if (picker) dispatch({ type: 'assignPlayer', ...picker, playerId, at: Date.now() })
+            setPicker(null)
+          }}
+        />
       </BottomSheet>
 
       <ConfirmDialog
@@ -503,6 +511,86 @@ function AutoSwapStatus({ sideSwitch, totalPoints }: { sideSwitch: SideSwitch; t
           {on ? 'ON' : 'OFF'}
         </span>
       </div>
+    </div>
+  )
+}
+
+// Body of the player picker sheet. It unmounts with the sheet, so the filter starts empty each time.
+function PlayerPicker({
+  players,
+  teamOfPlayer,
+  colors,
+  current,
+  onSelect,
+}: {
+  players: Player[]
+  teamOfPlayer: Map<string, TeamId>
+  colors: Config['teamColors']
+  current: ReactNode
+  onSelect: (playerId: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const needle = query.trim().toLowerCase()
+  const shown = needle ? players.filter((p) => p.name.toLowerCase().includes(needle)) : players
+
+  return (
+    <div className="px-4 pb-6">
+      <div className="flex min-w-0 items-center justify-between gap-3 pt-4">
+        <SectionLabel className="px-1 text-[11px]">Current</SectionLabel>
+        <div className="pointer-events-none flex min-w-0 justify-end">{current}</div>
+      </div>
+      {/* Stays at the top while the grid scrolls. */}
+      <div className="sticky top-0 z-10 bg-white pt-5 pb-3">
+        <SectionLabel className="mb-2 px-1 text-[11px]">Replace with</SectionLabel>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Filter by name"
+          aria-label="Filter players by name"
+          autoComplete="off"
+          className="h-11 w-full rounded-control bg-soft px-3 text-base outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-band"
+        />
+      </div>
+      {shown.length === 0 ? (
+        <p className="px-1 py-6 text-center text-sm text-muted">No players match “{query.trim()}”</p>
+      ) : (
+        <ul className="grid grid-cols-3 gap-x-1 gap-y-2">
+          {shown.map((player) => {
+            const team = teamOfPlayer.get(player.id)
+            const teamColor = team ? TEAM_COLORS[colors[team]] : null
+            return (
+              <li key={player.id} className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onSelect(player.id)}
+                  className="flex min-h-[104px] w-full flex-col items-center gap-2 rounded-card px-1 pt-3 pb-2 active:bg-soft"
+                >
+                  {/* On-court players get a ring and check badge in their team's colour. */}
+                  <span
+                    className="relative flex rounded-full"
+                    style={teamColor ? { boxShadow: `0 0 0 2px #fff, 0 0 0 4.5px ${teamColor}` } : undefined}
+                  >
+                    <Avatar name={player.name} size={52} />
+                    {teamColor && (
+                      <span
+                        className="absolute -right-1 -bottom-1 flex size-[20px] items-center justify-center rounded-full border-2 border-white text-white"
+                        style={{ backgroundColor: teamColor }}
+                      >
+                        <CheckIcon size={10} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="line-clamp-2 w-full text-center text-[13px] leading-tight font-semibold break-words">
+                    {player.name}
+                  </span>
+                  {team && <span className="sr-only">On court, Team {colors[team].charAt(0).toUpperCase() + colors[team].slice(1)}</span>}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

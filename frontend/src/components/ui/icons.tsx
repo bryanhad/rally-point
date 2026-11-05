@@ -129,6 +129,12 @@ export const SwapIcon = (p: IconProps) => (
   </Svg>
 )
 
+export const CheckIcon = (p: IconProps) => (
+  <Svg size={12} strokeWidth={3.2} {...p}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Svg>
+)
+
 export const AlertIcon = (p: IconProps) => (
   <Svg size={26} {...p}>
     <circle cx="12" cy="12" r="9" />

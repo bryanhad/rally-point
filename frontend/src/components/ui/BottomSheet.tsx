@@ -20,12 +20,14 @@ type BottomSheetProps = {
   actions?: ReactNode
   // Optional fixed footer under the scrolling body.
   footer?: ReactNode
+  // Always open at the maximum height instead of sizing to the content.
+  fullHeight?: boolean
   children: ReactNode
 }
 
 // Bottom sheet: slides up over a fading overlay, stops at 75% of the viewport, and closes by
 // dragging down, the X button, tapping the overlay or Escape — all with the same animation.
-export function BottomSheet({ open, onClose, title, label, eyebrow, actions, footer, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, label, eyebrow, actions, footer, fullHeight, children }: BottomSheetProps) {
   const { mounted, shown } = usePresence(open, DURATION)
   const reduced = usePrefersReducedMotion()
   useScrollLock(mounted)
@@ -129,7 +131,7 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, actions, foo
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : undefined)}
         tabIndex={-1}
-        className="sheet-max-h relative flex w-full max-w-xl flex-col rounded-t-sheet bg-white outline-none"
+        className={`${fullHeight ? 'sheet-h' : 'sheet-max-h'} relative flex w-full max-w-xl flex-col rounded-t-sheet bg-white outline-none`}
         style={{ transform, transition, opacity: reduced ? (visible ? 1 : 0) : 1 }}
       >
         {/* Drag area: handle + header. touch-action none so the browser doesn't scroll instead. */}
