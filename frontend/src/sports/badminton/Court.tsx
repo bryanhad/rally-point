@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { initials } from './initials'
 import { receiverId, screenRow, serverId, sideOf, TEAM_IDS, type CourtState, type SideKey } from './game'
+import { SwapIcon } from '../../components/ui/icons'
 import { Crown, RefereeChair, Shuttle } from './icons'
 import { TEAM_COLORS, type Config, type Player, type TeamId } from './schema'
 
@@ -10,6 +11,8 @@ type CourtProps = {
   colors: Config['teamColors']
   // Omit for a read-only court (e.g. a past rally): chips can't be tapped.
   onPick?: (team: TeamId, slot: number) => void
+  // Omit to hide the partner-swap buttons; shown on each half that has two players.
+  onSwapPartners?: (team: TeamId) => void
   // Players of this team wear the crown.
   crownedTeam?: TeamId
   // Optional row of controls above the court (e.g. mode switch, switch sides/serve).
@@ -19,7 +22,7 @@ type CourtProps = {
 type Cell = { team: TeamId; slot: number; id: string }
 type Line = { x1: number; y1: number; x2: number; y2: number }
 
-export function Court({ court, byId, colors, onPick, crownedTeam, top }: CourtProps) {
+export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam, top }: CourtProps) {
   const server = serverId(court)
   const receiver = receiverId(court)
 
@@ -118,6 +121,25 @@ export function Court({ court, byId, colors, onPick, crownedTeam, top }: CourtPr
               )
             }),
           )}
+
+          {/* Partner swap: on each outer edge of the court, centred vertically. */}
+          {onSwapPartners &&
+            TEAM_IDS.filter((team) => court.teams[team].ids.length === 2).map((team) => {
+              const half = sideOf(court, team)
+              const [first, second] = court.teams[team].ids.map((id) => byId.get(id)?.name ?? '?')
+              return (
+                <button
+                  key={team}
+                  type="button"
+                  onClick={() => onSwapPartners(team)}
+                  aria-label={`Swap ${first} and ${second}`}
+                  title={`Swap ${first} and ${second}`}
+                  className={`absolute top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-flip-digit/80 text-ink shadow-sm active:opacity-80 ${half === 'left' ? 'left-1' : 'right-1'}`}
+                >
+                  <SwapIcon size={14} className="rotate-90" />
+                </button>
+              )
+            })}
         </div>
       </div>
       {/* The referee sits at the bottom, at the net, facing the court: this matches what the

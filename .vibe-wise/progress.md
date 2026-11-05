@@ -8,6 +8,10 @@ Earlier: UI rework to learner's ui-design/ mockups COMPLETE (home done: HomePage
 - Demonstrated understanding: stated the rule himself (first side to reach the threshold; other side already at/past it -> swapEnds false); reasoned that the event's swapEnds flag drives undo; dropped his proposed `swapSideTriggerer` field once shown winner + swapEnds already carry it. Claude corrected "passed" to "reached or passed" (equal case).
 - Replaces the old note that auto-swap re-fires on any crossing.
 
+## Partner swap buttons (2026-11-05)
+- IMPLEMENTED: doubles-only round swap button on each outer court edge (vertically centred), shown only before the first rally and NOT logged: `swapPartners {team}` action edits `start.lineup` like pre-rally assignPlayer (in KEEPS_REDO). Court prop `onSwapPartners`; hidden in singles and on read-only courts. Build + lint pass; Playwright check passed (hidden in singles/after rally, back after undo to 0-0, centred, server follows swap).
+- Learner decisions: only clickable before first rally (avoids rule-breaking mid-game swaps), so the 'undoable' requirement became moot; hidden in singles; placement far left/right, centred. Learner independently spotted the fairness/rules concern.
+
 ## Overlay engineering (UI rework)
 - Claude bug (fixed): first usePresence used a render-phase setState pattern (to satisfy the set-state-in-effect lint); its update got lost, unmounting the sheet right after opening. Fixed by deriving mounted = open || present and only setting state in rAF/timer callbacks. Found via headless CDP tracing; headless needs Emulation.setFocusEmulationEnabled for focus checks.
 Previously: App version in hero top-right: vite.config.ts reads package.json version at build time → `define: { __APP_VERSION__ }`, declared in src/globals.d.ts; only the string is bundled. Learner changed hero bg to sky-700 themselves.

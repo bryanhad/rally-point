@@ -38,6 +38,7 @@ export type GameAction =
   | { type: 'redo' }
   | { type: 'swapEnds'; at: number }
   | { type: 'assignPlayer'; team: TeamId; slot: number; playerId: string; at: number }
+  | { type: 'swapPartners'; team: TeamId }
   | { type: 'switchServer' }
   | { type: 'setMode'; mode: Config['mode'] }
   | { type: 'newGame' }
@@ -52,6 +53,7 @@ export const MAX_NAME_LENGTH = 24
 const KEEPS_REDO: ReadonlySet<GameAction['type']> = new Set([
   'undo',
   'redo',
+  'swapPartners',
   'addPlayer',
   'renamePlayer',
   'deletePlayer',
@@ -94,6 +96,15 @@ function applyAction(state: GameState, action: GameAction): GameState {
       // Nothing played yet: change the starting lineup instead of logging.
       const { court } = replay(state)
       const lineup = assignIds(lineupOf(court), action.team, action.slot, action.playerId)
+      return { ...state, start: { ...state.start, lineup } }
+    }
+    case 'swapPartners': {
+      // Before the first rally only (not logged): doubles partners trade courts in the start lineup.
+      if (hasRallies(state)) return state
+      const { court } = replay(state)
+      const ids = court.teams[action.team].ids
+      if (ids.length !== 2) return state
+      const lineup = { ...lineupOf(court), [action.team]: [ids[1], ids[0]] }
       return { ...state, start: { ...state.start, lineup } }
     }
     case 'switchServer':

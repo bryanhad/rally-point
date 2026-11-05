@@ -220,7 +220,14 @@ export function Scoreboard() {
           </div>
         </div>
 
-        <Court court={court} byId={byId} colors={config.teamColors} onPick={(team, slot) => setPicker({ team, slot })} />
+        <Court
+          court={court}
+          byId={byId}
+          colors={config.teamColors}
+          onPick={(team, slot) => setPicker({ team, slot })}
+          // Only before the first rally; Court hides it for singles.
+          onSwapPartners={started ? undefined : (team) => dispatch({ type: 'swapPartners', team })}
+        />
 
         {/* Game actions: history controls on the left, reset/end on the right */}
         <div className="mb-2 flex shrink-0 items-center justify-between">
