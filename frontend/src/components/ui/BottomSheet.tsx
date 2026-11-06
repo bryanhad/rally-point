@@ -18,16 +18,20 @@ type BottomSheetProps = {
   eyebrow?: ReactNode
   // Extra header buttons, placed before the close button.
   actions?: ReactNode
+  // Fixed content under the title that doesn't scroll (e.g. a filter or an Add button). The
+  // header gets a bottom border when it's set.
+  subheader?: ReactNode
+  // White gradient over the bottom of the scrolling body, so long lists fade out.
+  fade?: boolean
   // Optional fixed footer under the scrolling body.
   footer?: ReactNode
-  // Always open at the maximum height instead of sizing to the content.
-  fullHeight?: boolean
   children: ReactNode
 }
 
-// Bottom sheet: slides up over a fading overlay, stops at 75% of the viewport, and closes by
-// dragging down, the X button, tapping the overlay or Escape — all with the same animation.
-export function BottomSheet({ open, onClose, title, label, eyebrow, actions, footer, fullHeight, children }: BottomSheetProps) {
+// Bottom sheet: slides up over a fading overlay, always 75% of the viewport tall (whatever the
+// content), and closes by dragging down, the X button, tapping the overlay or Escape — all with
+// the same animation.
+export function BottomSheet({ open, onClose, title, label, eyebrow, actions, subheader, fade, footer, children }: BottomSheetProps) {
   const { mounted, shown } = usePresence(open, DURATION)
   const reduced = usePrefersReducedMotion()
   useScrollLock(mounted)
@@ -131,7 +135,7 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, actions, foo
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : undefined)}
         tabIndex={-1}
-        className={`${fullHeight ? 'sheet-h' : 'sheet-max-h'} relative flex w-full max-w-xl flex-col rounded-t-sheet bg-white outline-none`}
+        className={`sheet-h relative flex w-full max-w-xl flex-col rounded-t-sheet bg-white outline-none`}
         style={{ transform, transition, opacity: reduced ? (visible ? 1 : 0) : 1 }}
       >
         {/* Drag area: handle + header. touch-action none so the browser doesn't scroll instead. */}
@@ -171,8 +175,17 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, actions, foo
             </div>
           </div>
         </div>
-        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {children}
+        {subheader && <div className="shrink-0 border-b border-soft pb-3">{subheader}</div>}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {children}
+          </div>
+          {fade && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-b from-white/0 to-white"
+            />
+          )}
         </div>
         {footer && <div className="shrink-0">{footer}</div>}
       </div>

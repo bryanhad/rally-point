@@ -22,6 +22,13 @@ function Svg({ size = 20, className, strokeWidth = 2, children }: IconProps & { 
   )
 }
 
+export const SearchIcon = (p: IconProps) => (
+  <Svg size={18} strokeWidth={2.2} {...p}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="M16 16l4 4" />
+  </Svg>
+)
+
 export const BackIcon = (p: IconProps) => (
   <Svg size={22} strokeWidth={2.2} {...p}>
     <path d="M15 18l-6-6 6-6" />

@@ -22,6 +22,8 @@
   /* Brand band */
   --color-band: #2268a6;
   --color-band-ink: #1f5f99;
+  --color-band-tile: #3479b5;
+  --color-band-tile-pressed: #2c6dab;
   --color-accent-soft: #e8f0f8;
 
   /* Destructive: text and icons only */
@@ -63,12 +65,8 @@
   --band-line: rgba(255, 255, 255, 0.28);
 }
 
-/* Bottom sheet height: 75% of the dynamic viewport, falling back to vh where dvh is unsupported. */
-.sheet-max-h {
-  max-height: 75vh;
-  max-height: 75dvh;
-}
-/* Same 75%, but as the actual height (for sheets that shouldn't resize with their content). */
+/* Every bottom sheet is exactly 75% of the dynamic viewport tall, falling back to vh where dvh
+   is unsupported. */
 .sheet-h {
   height: 75vh;
   height: 75dvh;

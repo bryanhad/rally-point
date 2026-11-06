@@ -1,4 +1,5 @@
 import { newId } from '../../lib/id'
+import { avatarColorFor } from './avatarStyle'
 import {
   DEFAULT_PLAYERS,
   type Config,
@@ -38,7 +39,7 @@ export type GameAction =
   | { type: 'redo' }
   | { type: 'swapEnds'; at: number }
   | { type: 'assignPlayer'; team: TeamId; slot: number; playerId: string; at: number }
-  | { type: 'swapPartners'; team: TeamId }
+  | { type: 'swapPartners'; team: TeamId; at: number }
   | { type: 'switchServer' }
   | { type: 'setMode'; mode: Config['mode'] }
   | { type: 'newGame' }
@@ -53,7 +54,6 @@ export const MAX_NAME_LENGTH = 24
 const KEEPS_REDO: ReadonlySet<GameAction['type']> = new Set([
   'undo',
   'redo',
-  'swapPartners',
   'addPlayer',
   'renamePlayer',
   'deletePlayer',
@@ -99,13 +99,12 @@ function applyAction(state: GameState, action: GameAction): GameState {
       return { ...state, start: { ...state.start, lineup } }
     }
     case 'swapPartners': {
-      // Before the first rally only (not logged): doubles partners trade courts in the start lineup.
-      if (hasRallies(state)) return state
+      // Doubles partners trade courts: logged once a rally has been played, otherwise the
+      // start lineup is edited.
       const { court } = replay(state)
-      const ids = court.teams[action.team].ids
-      if (ids.length !== 2) return state
-      const lineup = { ...lineupOf(court), [action.team]: [ids[1], ids[0]] }
-      return { ...state, start: { ...state.start, lineup } }
+      if (court.teams[action.team].ids.length !== 2) return state
+      if (hasRallies(state)) return append(state, { type: 'swapPartners', team: action.team, at: action.at })
+      return { ...state, start: { ...state.start, lineup: lineupOf(applyEvent(court, action)) } }
     }
     case 'switchServer':
       if (hasRallies(state)) return state
@@ -124,7 +123,9 @@ function applyAction(state: GameState, action: GameAction): GameState {
     case 'addPlayer': {
       // The form validates first; this guard keeps the reducer safe on its own.
       if (validateName(action.name, allPlayers(state))) return state
-      return { ...state, players: [...state.players, { id: action.id, name: action.name.trim() }] }
+      const name = action.name.trim()
+      // The colour is picked once here; renamePlayer leaves it alone.
+      return { ...state, players: [...state.players, { id: action.id, name, color: avatarColorFor(name) }] }
     }
     case 'renamePlayer': {
       if (validateName(action.name, allPlayers(state), action.id)) return state
@@ -178,16 +179,23 @@ function applyEvent(court: CourtState, event: GameEvent): CourtState {
     }
     case 'swapEnds':
       return { ...court, leftTeam: otherTeam(court.leftTeam) }
-    case 'assignPlayer': {
-      const lineup = assignIds(lineupOf(court), event.team, event.slot, event.playerId)
-      return {
-        ...court,
-        teams: {
-          a: { ...court.teams.a, ids: lineup.a },
-          b: { ...court.teams.b, ids: lineup.b },
-        },
-      }
+    case 'assignPlayer':
+      return withLineup(court, assignIds(lineupOf(court), event.team, event.slot, event.playerId))
+    case 'swapPartners': {
+      const ids = court.teams[event.team].ids
+      if (ids.length !== 2) return court
+      return withLineup(court, { ...lineupOf(court), [event.team]: [ids[1], ids[0]] })
     }
+  }
+}
+
+function withLineup(court: CourtState, lineup: Record<TeamId, string[]>): CourtState {
+  return {
+    ...court,
+    teams: {
+      a: { ...court.teams.a, ids: lineup.a },
+      b: { ...court.teams.b, ids: lineup.b },
+    },
   }
 }
 
@@ -253,9 +261,23 @@ export function describeUndo({ event, before, after }: LogStep, name: NameOf): s
       return `Undid rally, back to ${screenScore(before)}${event.swapEnds ? '. Sides switched back' : ''}`
     case 'swapEnds':
       return 'Undid switch sides'
-    case 'assignPlayer':
+    case 'swapPartners': {
+      const [x, y] = before.teams[event.team].ids
+      return `${name(x)} and ${name(y)} swapped back`
+    }
+    case 'assignPlayer': {
+      const swap = swappedPair(event, before)
+      if (swap) return `${name(swap[0])} and ${name(swap[1])} swapped back`
       return `${name(after.teams[event.team].ids[event.slot])} changed back to ${name(before.teams[event.team].ids[event.slot])}`
+    }
   }
+}
+
+// For an assignPlayer that picked someone already on court: the two players who traded
+// places. Null for a plain replacement.
+function swappedPair(event: Extract<GameEvent, { type: 'assignPlayer' }>, before: CourtState) {
+  const onCourt = TEAM_IDS.some((t) => before.teams[t].ids.includes(event.playerId))
+  return onCourt ? ([before.teams[event.team].ids[event.slot], event.playerId] as const) : null
 }
 
 // What redoing this log entry did, for a toast.
@@ -265,12 +287,24 @@ export function describeRedo({ event, before, after }: LogStep, name: NameOf): s
       return `Redid rally, ${screenScore(after)}${event.swapEnds ? '. Players switched sides' : ''}`
     case 'swapEnds':
       return 'Redid switch sides'
-    case 'assignPlayer':
+    case 'swapPartners': {
+      const [x, y] = before.teams[event.team].ids
+      return `${name(x)} and ${name(y)} swapped again`
+    }
+    case 'assignPlayer': {
+      const swap = swappedPair(event, before)
+      if (swap) return `${name(swap[0])} and ${name(swap[1])} swapped again`
       return `${name(before.teams[event.team].ids[event.slot])} changed to ${name(after.teams[event.team].ids[event.slot])} again`
+    }
   }
 }
 
 // --- Players ----------------------------------------------------------------
+
+// A–Z, ignoring case (and accents), for every player list.
+export function sortByName<T extends Pick<Player, 'name'>>(players: readonly T[]): T[] {
+  return [...players].sort((x, y) => x.name.localeCompare(y.name, undefined, { sensitivity: 'base' }))
+}
 
 export function allPlayers(state: GameState): Player[] {
   return [...DEFAULT_PLAYERS, ...state.players]
@@ -375,7 +409,8 @@ function freeDefaultId(onCourt: string[]): string {
   return free.id
 }
 
-// Puts a player into a slot; if they were already on court, a free default fills their old slot.
+// Puts a player into a slot. If they were already on court (either team), the two swap: the
+// replaced player takes the picked player's old slot.
 function assignIds(
   lineup: Record<TeamId, string[]>,
   team: TeamId,
@@ -386,13 +421,9 @@ function assignIds(
   if (slot >= ids[team].length || ids[team][slot] === playerId) return lineup
 
   const fromTeam = TEAM_IDS.find((t) => ids[t].includes(playerId))
-  const fromSlot = fromTeam ? ids[fromTeam].indexOf(playerId) : -1
-
+  const replaced = ids[team][slot]
+  if (fromTeam) ids[fromTeam][ids[fromTeam].indexOf(playerId)] = replaced
   ids[team][slot] = playerId
-  if (fromTeam) {
-    ids[fromTeam][fromSlot] = ''
-    ids[fromTeam][fromSlot] = freeDefaultId([...ids.a, ...ids.b])
-  }
   return ids
 }
 

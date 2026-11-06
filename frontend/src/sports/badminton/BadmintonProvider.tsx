@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { z } from 'zod'
 import { loadStored, readStored, saveStored } from '../../lib/storage'
+import { avatarColorFor } from './avatarStyle'
 import { BadmintonContext, type ResetKey } from './context'
 import { fixTeamColors, gameReducer, repairGame, replay } from './game'
 import {
@@ -41,7 +42,11 @@ function loadInitial() {
   const config = loadStored(CONFIG_KEY, configSchema, defaultConfig)
   const history = loadStored(HISTORY_KEY, historySchema, defaultHistory)
 
-  const players = roster.status === 'missing' ? readLegacyPlayers() : roster.value.players
+  // Players saved before avatar colours existed get one from their name now; the save effect
+  // below writes it back, so it is fixed from here on and later renames keep it.
+  const players = (roster.status === 'missing' ? readLegacyPlayers() : roster.value.players).map((p) =>
+    p.color ? p : { ...p, color: avatarColorFor(p.name) },
+  )
 
   // Listed in the order the reset notice shows them.
   const reset: ResetKey[] = []

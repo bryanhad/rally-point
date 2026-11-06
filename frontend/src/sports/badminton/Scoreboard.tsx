@@ -1,15 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { BottomSheet } from '../../components/ui/BottomSheet'
+import { newId } from '../../lib/id'
 import { writeLastSport } from '../../lib/lastSport'
-import { ConfirmDialog, Dialog, DialogButton } from '../../components/ui/Dialog'
+import { ConfirmDialog } from '../../components/ui/Dialog'
 import { digits } from '../../components/ui/digits'
 import { FlipDigits } from '../../components/ui/FlipDigits'
-import { BandCaption, FrameCell, HeaderBand } from '../../components/ui/HeaderBand'
+import { BandTile, HeaderBand } from '../../components/ui/HeaderBand'
 import {
   BackIcon,
-  CheckIcon,
+  ChevronRightIcon,
+  EditIcon,
   FlagIcon,
   GearIcon,
   RedoIcon,
@@ -18,10 +19,10 @@ import {
   TrophyIcon,
   UndoIcon,
 } from '../../components/ui/icons'
-import { Button, SectionLabel } from '../../components/ui/primitives'
+import { Button } from '../../components/ui/primitives'
 import { Avatar } from './Avatar'
 import { useBadminton } from './context'
-import { Court, PlayerChip } from './Court'
+import { Court } from './Court'
 import {
   allPlayers,
   canRedo,
@@ -32,22 +33,24 @@ import {
   otherTeam,
   replay,
   screenScore,
-  serverId,
-  TEAM_IDS,
   shouldSwitchSides,
+  sortByName,
   teamOn,
   type RallyStep,
   type SideKey,
 } from './game'
+import { ChangePlayerSheet, type PickerTarget } from './ChangePlayerSheet'
+import { GamePointDialog, GameWonDialog } from './GameEndDialogs'
+import { GameRulesSheet } from './GameRulesSheet'
 import { HistorySheet } from './HistorySheet'
+import { ManagePlayersSheet } from './ManagePlayersSheet'
 import { RallySheet } from './RallySheet'
-import { Crown, Racket, Rackets, ServerIcon, SidesIcon } from './icons'
-import { initials } from './initials'
-import { TEAM_COLORS, type Config, type HistoryEntry, type Player, type SideSwitch, type TeamId } from './schema'
+import { Racket, Rackets, ServerIcon, SidesIcon } from './icons'
+import { initials } from './avatarStyle'
+import { TEAM_COLORS, type Config, type HistoryEntry, type SideSwitch, type TeamId } from './schema'
 
 const SIDES: SideKey[] = ['left', 'right']
 
-type PickerTarget = { team: TeamId; slot: number }
 
 // Score after a rally in screen order after it, so a rally that switched ends shows the new order.
 const scoreAfter = ({ after }: RallyStep) => screenScore(after)
@@ -66,6 +69,8 @@ export function Scoreboard() {
   const [rallyNumber, setRallyNumber] = useState<number | null>(null)
   const [rallyOpen, setRallyOpen] = useState(false)
   const [confirm, setConfirm] = useState<'end' | 'reset' | null>(null)
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [playersOpen, setPlayersOpen] = useState(false)
 
   // Remember badminton as the last sport played, for the home page's in-progress card.
   useEffect(() => writeLastSport('badminton'), [])
@@ -96,6 +101,32 @@ export function Scoreboard() {
     if (!last) return
     dispatch({ type: 'undo' })
     toast(describeUndo(last, nameOf))
+  }
+
+  // Change player sheet: the current player just closes it, the teammate swaps partners (the
+  // same move as the court's swap button), anyone else is put in (swapping if on court).
+  function pickPlayer(playerId: string) {
+    if (!picker) return
+    const ids = court.teams[picker.team].ids
+    if (playerId === ids[picker.slot]) {
+      // nothing to change
+    } else if (ids.includes(playerId)) {
+      dispatch({ type: 'swapPartners', team: picker.team, at: Date.now() })
+    } else {
+      dispatch({ type: 'assignPlayer', ...picker, playerId, at: Date.now() })
+    }
+    setPicker(null)
+  }
+
+  // New player from the Change player sheet: always saved; "Add & replace" also puts them in the
+  // slot and closes the sheet, "Just add" leaves the sheet open.
+  function createPlayer(name: string, replace: boolean) {
+    const id = newId()
+    dispatch({ type: 'addPlayer', id, name })
+    if (replace && picker) {
+      dispatch({ type: 'assignPlayer', ...picker, playerId: id, at: Date.now() })
+      setPicker(null)
+    }
   }
 
   function redo() {
@@ -135,19 +166,11 @@ export function Scoreboard() {
     setPendingMode(null)
   }
 
-  const matchPointNames = matchPointTeam
-    ? court.teams[matchPointTeam].ids.map((id) => byId.get(id)?.name ?? '?').join(' & ')
-    : ''
-  const winnerSide =
-    winnerEntry && winnerEntry.winner !== 'draw' ? winnerEntry[winnerEntry.winner] : null
-  const pickedId = picker ? court.teams[picker.team].ids[picker.slot] : null
   // Rallies only, numbered in play order, newest first for the strip.
   const chronological = steps
     .filter((s): s is RallyStep => s.event.type === 'rally')
     .map((step, i) => ({ step, number: i + 1 }))
   const rallies = [...chronological].reverse()
-  // Which team each on-court player belongs to (for the picker's indicator).
-  const teamOfPlayer = new Map<string, TeamId>(TEAM_IDS.flatMap((t) => court.teams[t].ids.map((id) => [id, t] as const)))
 
   const colorName = (team: TeamId) => {
     const name = config.teamColors[team]
@@ -160,6 +183,7 @@ export function Scoreboard() {
     <div className="flex flex-1 flex-col">
       <HeaderBand
         title="BADMINTON"
+        framed={false}
         left={
           <Link to="/" aria-label="Back to home" className={BAND_ICON_LINK}>
             <BackIcon />
@@ -171,17 +195,42 @@ export function Scoreboard() {
           </Link>
         }
       >
-        <FrameCell className="flex h-[58px] items-center gap-2 px-3">
-          <FlipDigits tiles={digits(config.totalPoints)} size="xs" label={`${config.totalPoints} points to win`} />
-          <BandCaption>
-            POINTS
-            <br />
-            TO WIN
-          </BandCaption>
-        </FrameCell>
-        <FrameCell divider className="flex min-w-0 flex-1 items-center justify-end px-3">
-          <AutoSwapStatus sideSwitch={config.sideSwitch} totalPoints={config.totalPoints} />
-        </FrameCell>
+        <BandTile
+          // Narrower than the 390px mockup: tighter gaps so the rule text still fits.
+          className="flex-1 gap-2.5 max-[389px]:gap-2"
+          onClick={() => setRulesOpen(true)}
+          aria-label={`Game rules: ${config.totalPoints} points to win, ${swapRuleLabel(config.sideSwitch)}. Edit`}
+          icon={<EditIcon size={13} />}
+        >
+          <FlipDigits tiles={digits(config.totalPoints)} size="xs" />
+          <div className="flex min-w-0 flex-1 flex-col gap-[5px] max-[389px]:-ml-0.5">
+            <div className={TILE_CAPTION}>POINTS TO WIN</div>
+            <AutoSwapStatus sideSwitch={config.sideSwitch} />
+          </div>
+        </BandTile>
+        <BandTile
+          // 112px as in the mockup, growing for a two- or three-digit count.
+          className="min-w-28 shrink-0 gap-1.5 pl-2.5"
+          onClick={() => setPlayersOpen(true)}
+          aria-label={`Manage players, ${game.players.length} ${game.players.length === 1 ? 'player' : 'players'}`}
+          icon={<ChevronRightIcon size={13} />}
+        >
+          <div className="flex flex-col gap-[5px]">
+            <div className={TILE_CAPTION}>PLAYERS</div>
+            <div className="flex items-center">
+              {game.players.length === 0 ? (
+                <span className="size-[22px] rounded-full border-[1.5px] border-dashed border-white/70" />
+              ) : (
+                sortByName(game.players)
+                  .slice(0, 3)
+                  .map((p, i) => (
+                    <Avatar key={p.id} player={p} size={22} className={`border-2 border-band ${i > 0 ? '-ml-[7px]' : ''}`} />
+                  ))
+              )}
+              <span className="ml-[5px] text-[13px] font-extrabold">{game.players.length}</span>
+            </div>
+          </div>
+        </BandTile>
       </HeaderBand>
 
       <div className="flex flex-1 flex-col px-3 pt-2.5 pb-[max(12px,env(safe-area-inset-bottom))]">
@@ -230,7 +279,7 @@ export function Scoreboard() {
           colors={config.teamColors}
           onPick={(team, slot) => setPicker({ team, slot })}
           // Only before the first rally; Court hides it for singles.
-          onSwapPartners={started ? undefined : (team) => dispatch({ type: 'swapPartners', team })}
+          onSwapPartners={started ? undefined : (team) => dispatch({ type: 'swapPartners', team, at: Date.now() })}
         />
 
         {/* Game actions: history controls on the left, reset/end on the right */}
@@ -318,66 +367,22 @@ export function Scoreboard() {
               ))}
             </div>
           ) : (
-            <p className="flex h-10 items-center text-sm text-faint">No rallies yet</p>
+            <p className="flex h-10 items-center text-sm text-faint">Tap a team's score to log the first rally</p>
           )}
         </div>
       </div>
 
-      <Dialog
-        open={matchPointTeam !== null}
-        badge={<Crown className="h-6 w-7" />}
-        badgeTone="gold"
-        title="Game point!"
-        description={
-          <>
-            <strong className="text-ink">{matchPointNames}</strong> reached{' '}
-            <strong className="text-ink">{config.totalPoints}</strong>.
-            <br />
-            End the game or keep playing?
-          </>
-        }
-        actions={
-          <>
-            <DialogButton tone="ink" onClick={() => matchPointTeam && finishGame(matchPointTeam)}>
-              End game
-            </DialogButton>
-            <DialogButton onClick={() => setMatchPointTeam(null)}>Keep playing</DialogButton>
-          </>
-        }
+      <GamePointDialog
+        team={matchPointTeam}
+        court={court}
+        byId={byId}
+        teamColors={config.teamColors}
+        totalPoints={config.totalPoints}
+        onEnd={finishGame}
+        onKeepPlaying={() => setMatchPointTeam(null)}
       />
 
-      <Dialog
-        open={winnerEntry !== null}
-        onDismiss={() => setWinnerEntry(null)}
-        badge={winnerSide ? <Crown className="h-6 w-7" /> : <FlagIcon size={26} />}
-        badgeTone={winnerSide ? 'gold' : 'accent'}
-        title={winnerSide ? 'Game!' : "It's a draw!"}
-        description={
-          winnerSide ? (
-            <>
-              <strong className="text-ink">{winnerSide.players.map((p) => p.name).join(' & ')}</strong> win the game.
-            </>
-          ) : (
-            'Nobody takes the crown this time.'
-          )
-        }
-        actions={
-          <DialogButton tone="ink" onClick={() => setWinnerEntry(null)}>
-            Next game
-          </DialogButton>
-        }
-      >
-        {winnerEntry && (
-          <FlipDigits
-            size="lg"
-            label={`Final score ${winnerEntry.left.score} to ${winnerEntry.right.score}`}
-            tiles={[
-              { value: winnerEntry.left.score, marker: winnerEntry.left.color },
-              { value: winnerEntry.right.score, marker: winnerEntry.right.color },
-            ]}
-          />
-        )}
-      </Dialog>
+      <GameWonDialog entry={winnerEntry} onNext={() => setWinnerEntry(null)} />
 
       <ConfirmDialog
         open={pendingMode !== null}
@@ -395,38 +400,15 @@ export function Scoreboard() {
         onCancel={() => setPendingMode(null)}
       />
 
-      <BottomSheet
-        open={picker !== null}
+      <ChangePlayerSheet
+        target={picker}
+        court={court}
+        saved={game.players}
+        teamColors={config.teamColors}
         onClose={() => setPicker(null)}
-        eyebrow={picker ? `Team ${colorName(picker.team)}` : ''}
-        title="Change player"
-        fullHeight
-      >
-        <PlayerPicker
-          players={players}
-          teamOfPlayer={teamOfPlayer}
-          colors={config.teamColors}
-          current={
-            picker && pickedId ? (
-              // Read-only copy of the chip that was tapped.
-              <PlayerChip
-                name={nameOf(pickedId)}
-                half="left"
-                color={TEAM_COLORS[config.teamColors[picker.team]]}
-                serving={pickedId === serverId(court)}
-                // The receiver's solid white ring would vanish on the white sheet.
-                receiving={false}
-                crowned={false}
-                showShuttle={false}
-              />
-            ) : null
-          }
-          onSelect={(playerId) => {
-            if (picker) dispatch({ type: 'assignPlayer', ...picker, playerId, at: Date.now() })
-            setPicker(null)
-          }}
-        />
-      </BottomSheet>
+        onPick={pickPlayer}
+        onCreate={createPlayer}
+      />
 
       <ConfirmDialog
         open={confirm === 'end'}
@@ -481,6 +463,8 @@ export function Scoreboard() {
       />
 
       <HistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <GameRulesSheet open={rulesOpen} onClose={() => setRulesOpen(false)} />
+      <ManagePlayersSheet open={playersOpen} onClose={() => setPlayersOpen(false)} />
 
     </div>
   )
@@ -488,109 +472,31 @@ export function Scoreboard() {
 
 const BAND_ICON_LINK = 'flex size-11 items-center justify-center rounded-control text-white active:bg-white/15'
 
-// Header status for the automatic side switch: the rule plus an ON/OFF pill.
-function AutoSwapStatus({ sideSwitch, totalPoints }: { sideSwitch: SideSwitch; totalPoints: number }) {
-  const on = sideSwitch.kind !== 'off'
-  const text =
-    sideSwitch.kind === 'off'
-      ? 'Off'
-      : sideSwitch.kind === 'half'
-        ? `At ${Math.ceil(totalPoints / 2)} pts`
-        : `Every ${sideSwitch.points} pts`
-  return (
-    <div className="flex min-w-0 flex-col items-end gap-1">
-      <BandCaption>AUTO SWAP SIDES</BandCaption>
-      <div className="flex h-5 min-w-0 items-center gap-1.5 text-sm leading-none font-bold">
-        <SwapIcon className="shrink-0" />
-        <span className="truncate">{text}</span>
-        <span
-          className={`inline-flex h-[18px] items-center rounded-full px-[7px] text-[10px] leading-none font-extrabold tracking-[0.08em] ${
-            on ? 'bg-flip-digit text-ink' : 'bg-white/20 text-white'
-          }`}
-        >
-          {on ? 'ON' : 'OFF'}
-        </span>
-      </div>
-    </div>
-  )
+const TILE_CAPTION = 'truncate text-[10px] leading-none font-bold tracking-[0.2em] opacity-85 max-[389px]:tracking-[0.12em]'
+
+// Rule in words, for the tile's accessible name.
+function swapRuleLabel(sideSwitch: SideSwitch) {
+  if (sideSwitch.kind === 'off') return 'auto swap sides off'
+  if (sideSwitch.kind === 'half') return 'swap sides at half'
+  return `swap sides every ${sideSwitch.points} points`
 }
 
-// Body of the player picker sheet. It unmounts with the sheet, so the filter starts empty each time.
-function PlayerPicker({
-  players,
-  teamOfPlayer,
-  colors,
-  current,
-  onSelect,
-}: {
-  players: Player[]
-  teamOfPlayer: Map<string, TeamId>
-  colors: Config['teamColors']
-  current: ReactNode
-  onSelect: (playerId: string) => void
-}) {
-  const [query, setQuery] = useState('')
-  const needle = query.trim().toLowerCase()
-  const shown = needle ? players.filter((p) => p.name.toLowerCase().includes(needle)) : players
-
+// Auto swap sides state on the rules tile: the rule plus an ON/OFF pill.
+function AutoSwapStatus({ sideSwitch }: { sideSwitch: SideSwitch }) {
+  const on = sideSwitch.kind !== 'off'
+  const text = sideSwitch.kind === 'off' ? 'Off' : sideSwitch.kind === 'half' ? 'At half' : `Every ${sideSwitch.points}`
   return (
-    <div className="px-4 pb-6">
-      <div className="flex min-w-0 items-center justify-between gap-3 pt-4">
-        <SectionLabel className="px-1 text-[11px]">Current</SectionLabel>
-        <div className="pointer-events-none flex min-w-0 justify-end">{current}</div>
-      </div>
-      {/* Stays at the top while the grid scrolls. */}
-      <div className="sticky top-0 z-10 bg-white pt-5 pb-3">
-        <SectionLabel className="mb-2 px-1 text-[11px]">Replace with</SectionLabel>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter by name"
-          aria-label="Filter players by name"
-          autoComplete="off"
-          className="h-11 w-full rounded-control bg-soft px-3 text-base outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-band"
-        />
-      </div>
-      {shown.length === 0 ? (
-        <p className="px-1 py-6 text-center text-sm text-muted">No players match “{query.trim()}”</p>
-      ) : (
-        <ul className="grid grid-cols-3 gap-x-1 gap-y-2">
-          {shown.map((player) => {
-            const team = teamOfPlayer.get(player.id)
-            const teamColor = team ? TEAM_COLORS[colors[team]] : null
-            return (
-              <li key={player.id} className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => onSelect(player.id)}
-                  className="flex min-h-[104px] w-full flex-col items-center gap-2 rounded-card px-1 pt-3 pb-2 active:bg-soft"
-                >
-                  {/* On-court players get a ring and check badge in their team's colour. */}
-                  <span
-                    className="relative flex rounded-full"
-                    style={teamColor ? { boxShadow: `0 0 0 2px #fff, 0 0 0 4.5px ${teamColor}` } : undefined}
-                  >
-                    <Avatar name={player.name} size={52} />
-                    {teamColor && (
-                      <span
-                        className="absolute -right-1 -bottom-1 flex size-[20px] items-center justify-center rounded-full border-2 border-white text-white"
-                        style={{ backgroundColor: teamColor }}
-                      >
-                        <CheckIcon size={10} />
-                      </span>
-                    )}
-                  </span>
-                  <span className="line-clamp-2 w-full text-center text-[13px] leading-tight font-semibold break-words">
-                    {player.name}
-                  </span>
-                  {team && <span className="sr-only">On court, Team {colors[team].charAt(0).toUpperCase() + colors[team].slice(1)}</span>}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+    <div className="flex h-5 min-w-0 items-center gap-[5px] text-[13px] leading-none font-bold whitespace-nowrap">
+      {/* Dropped on narrow screens, where the rule text needs the room. */}
+      <SwapIcon size={14} className="shrink-0 max-[389px]:hidden" />
+      <span className="truncate">{text}</span>
+      <span
+        className={`inline-flex h-4 shrink-0 items-center rounded-full px-1.5 text-[9px] leading-none font-extrabold tracking-[0.08em] ${
+          on ? 'bg-flip-digit text-ink' : 'bg-white/20 text-white'
+        }`}
+      >
+        {on ? 'ON' : 'OFF'}
+      </span>
     </div>
   )
 }

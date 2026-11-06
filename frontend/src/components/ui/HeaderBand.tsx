@@ -12,6 +12,8 @@ type HeaderBandProps = {
   align?: 'center' | 'left'
   // Space under the frame: 12px (scoreboard), 14px (config) or 20px (home, where a card overlaps it).
   bottom?: 'sm' | 'md' | 'lg'
+  // false: children sit straight on the band (e.g. `BandTile`s) instead of inside the court-line frame.
+  framed?: boolean
 }
 
 const BOTTOM = { sm: 'pb-3', md: 'pb-3.5', lg: 'pb-5' }
@@ -26,6 +28,7 @@ export function HeaderBand({
   className = '',
   align = 'center',
   bottom = 'sm',
+  framed = true,
 }: HeaderBandProps) {
   return (
     <header
@@ -44,12 +47,42 @@ export function HeaderBand({
           <div>{right}</div>
         </div>
       )}
-      {children && (
-        <div className="mx-2 flex items-stretch rounded-[14px] border-[1.5px] border-[var(--band-line)]">
-          {children}
-        </div>
-      )}
+      {children &&
+        (framed ? (
+          <div className="mx-2 flex items-stretch rounded-[14px] border-[1.5px] border-[var(--band-line)]">
+            {children}
+          </div>
+        ) : (
+          <div className="mx-2 flex items-stretch gap-2">{children}</div>
+        ))}
     </header>
+  )
+}
+
+type BandTileProps = {
+  onClick: () => void
+  'aria-label': string
+  // Shown in the white circle on the right (e.g. a pencil or a chevron).
+  icon: ReactNode
+  className?: string
+  children: ReactNode
+}
+
+// Flat tappable tile inside an unframed band: lighter blue, white icon circle on the right,
+// darkens and shrinks slightly while pressed. Pass the gap before the icon in `className`.
+export function BandTile({ onClick, icon, className = '', children, ...rest }: BandTileProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={rest['aria-label']}
+      className={`flex h-16 min-w-0 items-center rounded-[14px] bg-band-tile px-2 text-left text-white transition-transform duration-100 active:scale-[0.97] active:bg-band-tile-pressed motion-reduce:transition-none ${className}`}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">{children}</div>
+      <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-white text-band">
+        {icon}
+      </span>
+    </button>
   )
 }
 

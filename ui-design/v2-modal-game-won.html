@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game won modal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+
+  <div style="background: #2268A6; height: 128px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 12px; right: 12px; top: 192px; height: 210px; border-radius: 18px; background: #2B7A55"></div>
+  <div style="position: absolute; left: 12px; top: 520px; width: 179px; height: 196px; border-radius: 22px; background: #2F62D6"></div>
+  <div style="position: absolute; right: 12px; top: 520px; width: 179px; height: 196px; border-radius: 22px; background: #DD534C"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.6)"></div>
+
+  <div role="alertdialog" aria-modal="true" aria-labelledby="gwTitle" style="position: absolute; left: 16px; right: 16px; top: 170px; background: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(14,18,26,0.35)">
+
+    <div style="background: #2F62D6; color: #FFFFFF; padding: 22px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; position: relative">
+      <div style="position: absolute; left: 10px; top: 10px; right: 10px; bottom: 10px; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 16px"></div>
+      <svg width="44" height="36" viewBox="0 0 22 18"><path d="M1 5l5 4 5-8 5 8 5-4-2 11H3z" fill="#F2C94C" stroke="#C99A1A" stroke-width="0.8" stroke-linejoin="round"/></svg>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 11px; font-weight: 800; letter-spacing: 0.26em; opacity: 0.85">GAME</div>
+        <div id="gwTitle" style="font-size: 24px; font-weight: 800">Team Blue wins</div>
+      </div>
+      <div style="display: flex; gap: 18px; padding-top: 2px">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+          <span style="width: 52px; height: 52px; border-radius: 50%; background: #EEF1F5; color: #3A4458; border: 3px solid #FFFFFF; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center">P4</span>
+          <span style="font-size: 14px; font-weight: 700">Player 4</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+          <span style="width: 52px; height: 52px; border-radius: 50%; background: #EAE2FB; color: #5B3BA8; border: 3px solid #FFFFFF; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">W</span>
+          <span style="font-size: 14px; font-weight: 700">wiliam</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 18px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div style="display: flex; gap: 3px; background: #141A26; padding: 5px; border-radius: 9px">
+          <span style="width: 34px; height: 46px; border-radius: 5px; background: #262D3B; color: #F2C94C; font-size: 30px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -4px 0 #4E7FEA">1</span>
+          <span style="width: 34px; height: 46px; border-radius: 5px; background: #262D3B; color: #F2C94C; font-size: 30px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -4px 0 #4E7FEA">1</span>
+        </div>
+        <span style="font-size: 24px; font-weight: 800; color: #A4AEC0">–</span>
+        <div style="display: flex; gap: 3px; background: #141A26; padding: 5px; border-radius: 9px">
+          <span style="width: 34px; height: 46px; border-radius: 5px; background: #262D3B; color: #8A93A6; font-size: 30px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -4px 0 #DD534C">0</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #5A6478">
+        <span>vs</span>
+        <div style="display: flex">
+          <span style="width: 24px; height: 24px; border-radius: 50%; background: #FBE1EC; color: #A3245C; border: 2px solid #FFFFFF; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center">T</span>
+          <span style="width: 24px; height: 24px; border-radius: 50%; background: #EEF1F5; color: #3A4458; border: 2px solid #FFFFFF; margin-left: -7px; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center">P1</span>
+        </div>
+        <span style="font-weight: 600">tiffany &amp; Player 1</span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #DD534C"></span>
+      </div>
+
+      <button style="width: 100%; height: 50px; border: none; border-radius: 14px; background: #141A26; color: #FFFFFF; font-size: 15px; font-weight: 800">Next game</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

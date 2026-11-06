@@ -9,7 +9,8 @@ const SIZES: Record<Size, { tile: string; wrap: string }> = {
   xl: { tile: 'h-[54px] min-w-10 rounded-md text-[36px]', wrap: 'gap-1 p-1.5 rounded-[10px]' },
 }
 
-export type FlipTile = { value: string | number; marker?: string }
+// `dim` greys the digit (e.g. the trailing or losing score).
+export type FlipTile = { value: string | number; marker?: string; dim?: boolean }
 
 type FlipDigitsProps = {
   // One tile per entry. Use `digits(n)` to give each digit its own tile.
@@ -37,7 +38,7 @@ export function FlipDigits({ tiles, size = 'md', ring = false, className = '', l
         return (
           <span
             key={i}
-            className={`flex items-center justify-center bg-flip-tile px-1 leading-none font-extrabold text-flip-digit tabular-nums ${s.tile}`}
+            className={`flex items-center justify-center bg-flip-tile px-1 leading-none font-extrabold tabular-nums ${tile.dim ? 'text-subtle' : 'text-flip-digit'} ${s.tile}`}
             style={tile.marker ? { boxShadow: `inset 0 -3px 0 ${tile.marker}` } : undefined}
           >
             {tile.value}

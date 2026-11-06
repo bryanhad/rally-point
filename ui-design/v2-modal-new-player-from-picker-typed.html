@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New player modal — typing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button,input{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+
+  <div style="background: #2268A6; height: 128px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.55)"></div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 211px; background: #FFFFFF; border-radius: 26px 26px 0 0; padding: 30px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+    <div style="font-size: 22px; font-weight: 800">Replace wiliam</div>
+    <div style="height: 46px; border-radius: 14px; background: #F2F4F7"></div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px 18px; justify-items: center; padding-top: 10px">
+      <span style="width: 60px; height: 60px; border-radius: 50%; border: 2px dashed #9DB8D4; box-sizing: border-box"></span>
+      <span style="width: 60px; height: 60px; border-radius: 50%; background: #D5F0EC"></span>
+      <span style="width: 60px; height: 60px; border-radius: 50%; background: #EAE2FB"></span>
+      <span style="width: 60px; height: 60px; border-radius: 50%; background: #FBE1EC"></span>
+      <span style="width: 60px; height: 60px; border-radius: 50%; background: #FCEFD0"></span>
+      <span style="width: 60px; height: 60px; border-radius: 50%; background: #DDF2DF"></span>
+    </div>
+  </div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.45)"></div>
+
+  <div role="dialog" aria-modal="true" aria-labelledby="newTitle" style="position: absolute; left: 16px; right: 16px; top: 200px; background: #FFFFFF; border-radius: 24px; padding: 12px 20px 20px; box-shadow: 0 20px 50px rgba(14,18,26,0.3); display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 2px; padding-top: 6px">
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #2F62D6"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2F62D6"></span>TEAM BLUE</div>
+        <div id="newTitle" style="font-size: 20px; font-weight: 800">New player</div>
+      </div>
+      <button aria-label="Close" style="width: 44px; height: 44px; border: none; border-radius: 12px; background: #EEF1F5; color: #141A26; display: flex; align-items: center; justify-content: center; margin-right: -8px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div style="display: flex; justify-content: center">
+      <span aria-hidden="true" style="width: 96px; height: 96px; border-radius: 50%; background: #DDF2DF; color: #256B2E; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center">KS</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="npName" style="font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #5A6478">NAME</label>
+      <input id="npName" value="Kevin Sanjaya" placeholder="e.g. Kevin Sanjaya" style="height: 50px; box-sizing: border-box; border: 1.5px solid #2268A6; border-radius: 14px; padding: 0 14px; font-size: 16px; color: #141A26; background: #FFFFFF; box-shadow: 0 0 0 3px #E8F0F8">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 2px">
+      <button style="height: 50px; border: none; border-radius: 14px; background: #2268A6; color: #FFFFFF; font-size: 15px; font-weight: 800">Add &amp; replace wiliam</button>
+      <button style="height: 44px; border: none; border-radius: 14px; background: transparent; color: #1F5F99; font-size: 14px; font-weight: 700">Just add to players</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -29,26 +29,39 @@ const BADGE_TONES = {
   gold: 'bg-[#FDF6E3] text-crown-edge',
 }
 
-// Centred card dialog over a darker second overlay, so it stacks above an open bottom sheet.
-export function Dialog({
+type DialogShellProps = {
+  open: boolean
+  // Called by Escape and by tapping the overlay. Omit to require a choice from the buttons.
+  onDismiss?: () => void
+  role?: 'dialog' | 'alertdialog'
+  // Id of the element naming the dialog (its title).
+  labelledBy: string
+  describedBy?: string
+  // Element that receives focus when the dialog opens (defaults to the card itself).
+  initialFocus?: RefObject<HTMLElement | null>
+  // Layout of the card's content (padding, gap, alignment); the frame itself is fixed.
+  className?: string
+  children: ReactNode
+}
+
+// The frame every dialog shares: a white card centred over a darker second overlay (z-60, so
+// it stacks above an open bottom sheet), with fade/scale animation, scroll lock, Escape and
+// focus handling. Content and layout come from the caller.
+export function DialogShell({
   open,
   onDismiss,
   role = 'dialog',
-  badge,
-  badgeTone = 'accent',
-  title,
-  description,
-  actions,
-  children,
+  labelledBy,
+  describedBy,
   initialFocus,
-}: DialogProps) {
+  className = '',
+  children,
+}: DialogShellProps) {
   const { mounted, shown } = usePresence(open, DURATION)
   const reduced = usePrefersReducedMotion()
   useScrollLock(mounted)
   useEscape(open && !!onDismiss, () => onDismiss?.())
   const cardRef = useFocusHandoff<HTMLDivElement>(open && mounted, initialFocus)
-  const titleId = useId()
-  const descId = useId()
 
   if (!mounted) return null
   const visible = shown && open
@@ -65,36 +78,66 @@ export function Dialog({
         ref={cardRef}
         role={role}
         aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={description ? descId : undefined}
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         tabIndex={-1}
-        className="relative flex w-full max-w-sm flex-col items-center gap-3.5 rounded-dialog bg-white px-5 pt-[22px] pb-5 text-center shadow-[0_20px_50px_rgba(14,18,26,0.3)] outline-none"
+        className={`relative flex w-full max-w-sm flex-col rounded-dialog bg-white shadow-[0_20px_50px_rgba(14,18,26,0.3)] outline-none ${className}`}
         style={{
           opacity: visible ? 1 : 0,
           transform: reduced || visible ? 'none' : 'scale(0.96)',
           transition: `opacity ${DURATION}ms ease-out, transform ${DURATION}ms ease-out`,
         }}
       >
-        {badge && (
-          <div className={`flex size-14 items-center justify-center rounded-card ${BADGE_TONES[badgeTone]}`}>
-            {badge}
-          </div>
-        )}
-        <div className="flex flex-col gap-2">
-          <h2 id={titleId} className="text-xl font-extrabold">
-            {title}
-          </h2>
-          {description && (
-            <div id={descId} className="text-[15px] leading-[1.45] text-muted">
-              {description}
-            </div>
-          )}
-        </div>
         {children}
-        <div className="mt-1.5 flex w-full flex-col gap-2">{actions}</div>
       </div>
     </div>,
     document.body,
+  )
+}
+
+// Centred badge + title + description + stacked buttons, in a DialogShell.
+export function Dialog({
+  open,
+  onDismiss,
+  role = 'dialog',
+  badge,
+  badgeTone = 'accent',
+  title,
+  description,
+  actions,
+  children,
+  initialFocus,
+}: DialogProps) {
+  const titleId = useId()
+  const descId = useId()
+  return (
+    <DialogShell
+      open={open}
+      onDismiss={onDismiss}
+      role={role}
+      labelledBy={titleId}
+      describedBy={description ? descId : undefined}
+      initialFocus={initialFocus}
+      className="items-center gap-3.5 px-5 pt-[22px] pb-5 text-center"
+    >
+      {badge && (
+        <div className={`flex size-14 items-center justify-center rounded-card ${BADGE_TONES[badgeTone]}`}>
+          {badge}
+        </div>
+      )}
+      <div className="flex flex-col gap-2">
+        <h2 id={titleId} className="text-xl font-extrabold">
+          {title}
+        </h2>
+        {description && (
+          <div id={descId} className="text-[15px] leading-[1.45] text-muted">
+            {description}
+          </div>
+        )}
+      </div>
+      {children}
+      <div className="mt-1.5 flex w-full flex-col gap-2">{actions}</div>
+    </DialogShell>
   )
 }
 

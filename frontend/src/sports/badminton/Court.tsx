@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { initials } from './initials'
+import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { avatarColors, initials } from './avatarStyle'
 import { receiverId, screenRow, serverId, sideOf, TEAM_IDS, type CourtState, type SideKey } from './game'
 import { SwapIcon } from '../../components/ui/icons'
 import { Crown, RefereeChair, Shuttle } from './icons'
@@ -35,7 +35,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
     })
   }
 
-  // The serve line joins the net-facing edges of the server's and receiver's chips
+  // The serve line joins the net-facing ends of the server's and receiver's name pills
   // (at their vertical middle), measured from the DOM so it follows the real layout.
   const courtRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef(new Map<string, HTMLElement>())
@@ -51,7 +51,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
       const box = container.getBoundingClientRect()
       const netEdge = (el: HTMLElement) => {
         const r = el.getBoundingClientRect()
-        // A chip left of the net faces it with its right edge, and vice versa.
+        // A pill left of the net faces it with its right end, and vice versa.
         const leftOfNet = r.left + r.width / 2 < box.left + box.width / 2
         return { x: (leftOfNet ? r.right : r.left) - box.left, y: r.top + r.height / 2 - box.top }
       }
@@ -100,17 +100,17 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                 <div
                   key={`${half}-${row}`}
                   // Chips hug the back of their half so the shuttle never shifts them.
-                  className={`relative flex items-center p-2 ${half === 'left' ? 'col-start-1 justify-start' : 'col-start-2 justify-end'} ${row === 'top' ? 'row-start-1' : 'row-start-2'}`}
+                  className={`relative flex min-w-0 items-center px-1.5 ${half === 'left' ? 'col-start-1 justify-start' : 'col-start-2 justify-end'} ${row === 'top' ? 'row-start-1' : 'row-start-2'}`}
                 >
                   {cell && (
                     <PlayerChip
-                      name={byId.get(cell.id)?.name ?? '?'}
+                      player={byId.get(cell.id) ?? { name: '?' }}
                       half={half}
                       color={TEAM_COLORS[colors[cell.team]]}
                       serving={cell.id === server}
                       receiving={cell.id === receiver}
                       crowned={cell.team === crownedTeam}
-                      chipRef={(el) => {
+                      pillRef={(el) => {
                         if (el) chipRefs.current.set(cell.id, el)
                         else chipRefs.current.delete(cell.id)
                       }}
@@ -122,22 +122,41 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
             }),
           )}
 
-          {/* Partner swap: on each outer edge of the court, centred vertically. */}
+          {/* Partner swap: on each outer edge, on the avatars' centre line, with a faint line from
+              the bottom of the top avatar to the top of the bottom one and the button halfway
+              along it. The 44px button is the tap area; the 32px circle is what shows. */}
           {onSwapPartners &&
             TEAM_IDS.filter((team) => court.teams[team].ids.length === 2).map((team) => {
               const half = sideOf(court, team)
               const [first, second] = court.teams[team].ids.map((id) => byId.get(id)?.name ?? '?')
+              const edge = half === 'left' ? 'left' : 'right'
               return (
-                <button
-                  key={team}
-                  type="button"
-                  onClick={() => onSwapPartners(team)}
-                  aria-label={`Swap ${first} and ${second}`}
-                  title={`Swap ${first} and ${second}`}
-                  className={`absolute top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-flip-digit/80 text-ink shadow-sm active:opacity-80 ${half === 'left' ? 'left-1' : 'right-1'}`}
-                >
-                  <SwapIcon size={14} className="rotate-90" />
-                </button>
+                <Fragment key={team}>
+                  <div
+                    aria-hidden
+                    className="absolute w-0.5 rounded-full bg-white/55"
+                    style={{
+                      [edge]: AVATAR_LINE - 1,
+                      top: `calc(25% + ${AVATAR_SIZE / 2}px)`,
+                      bottom: `calc(25% + ${AVATAR_SIZE / 2}px)`,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onSwapPartners(team)}
+                    aria-label={`Swap ${first} and ${second}`}
+                    title={`Swap ${first} and ${second}`}
+                    className="group absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center"
+                    style={{ [edge]: AVATAR_LINE - 22 }}
+                  >
+                    <span
+                      className="flex size-8 items-center justify-center rounded-full border-[2.5px] border-white text-white shadow-[0_1px_4px_rgba(14,18,26,0.25)] group-active:opacity-80"
+                      style={{ backgroundColor: TEAM_COLORS[colors[team]] }}
+                    >
+                      <SwapIcon size={15} className="rotate-90" />
+                    </span>
+                  </button>
+                </Fragment>
               )
             })}
         </div>
@@ -153,77 +172,81 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
 }
 
 type PlayerChipProps = {
-  name: string
+  player: Pick<Player, 'name' | 'color'>
   half: SideKey
   color: string
   serving: boolean
   receiving: boolean
   crowned: boolean
-  // The shuttle beside the server's chip; off when the chip is shown outside the court.
-  showShuttle?: boolean
-  chipRef?: (el: HTMLButtonElement | null) => void
+  // Gets the name pill, whose net-facing end anchors the serve line.
+  pillRef?: (el: HTMLSpanElement | null) => void
   onClick?: () => void
 }
 
-// Ring: yellow on the server, solid white on the receiver, faint white otherwise.
-function ringColor(serving: boolean, receiving: boolean) {
+// Chip geometry: a 50px avatar circle, inset 6px from the court's outer edge. The partner swap
+// button and its line sit on the avatars' centre line.
+const CHIP_INSET = 6
+const AVATAR_SIZE = 50
+const AVATAR_LINE = CHIP_INSET + AVATAR_SIZE / 2
+
+// Avatar ring: gold on the server, white on the receiver, a light team colour otherwise.
+function ringColor(color: string, serving: boolean, receiving: boolean) {
   if (serving) return 'var(--color-serve)'
   if (receiving) return '#FFFFFF'
-  return 'rgba(255,255,255,0.35)'
+  return `color-mix(in srgb, ${color} 60%, white)`
 }
 
-// Width of the white initials section of a chip.
-const INITIALS_ZONE = 32
-
-export function PlayerChip({
-  name,
-  half,
-  color,
-  serving,
-  receiving,
-  crowned,
-  showShuttle = true,
-  chipRef,
-  onClick,
-}: PlayerChipProps) {
-  const ring = ringColor(serving, receiving)
-  // The shuttle sits on the side facing the net (the middle of the screen).
+// An initials avatar on the court's outer side, overlapping a name pill in the team colour that
+// runs towards the net. The right half is the mirror image.
+export function PlayerChip({ player, half, color, serving, receiving, crowned, pillRef, onClick }: PlayerChipProps) {
+  const { name } = player
+  const right = half === 'right'
+  // Saved players show their avatar colour; defaults stay white, since grey looks washed out
+  // against the court.
+  const avatar = player.color ? avatarColors(player) : { bg: '#FFFFFF', fg: 'var(--color-ink)' }
   return (
-    <div className={`relative flex max-w-full items-center gap-1 ${half === 'right' ? 'flex-row-reverse' : ''}`}>
-      {/* Outer layer is the ring (ring colour painted over the team colour, like the old border);
-          the inner pill is one hard-stop gradient (white initials zone, then team colour), so no
-          separate white element ever sits on top of the team colour and no thin fringe shows. */}
+    <div className={`relative flex max-w-full min-w-0 items-center ${right ? 'flex-row-reverse' : ''}`}>
       <button
-        ref={chipRef}
         type="button"
         onClick={onClick}
         disabled={!onClick}
-        style={{ background: `linear-gradient(${ring}, ${ring}), ${color}` }}
-        // As wide as the name; very long names are truncated to fit the quarter court.
-        className="flex h-9 max-w-full min-w-0 rounded-full p-[3px] text-[13px] font-bold text-white enabled:active:opacity-80"
+        aria-label={name}
+        title={name}
+        className={`flex max-w-full min-w-0 items-center enabled:active:opacity-80 ${right ? 'flex-row-reverse' : ''}`}
       >
         <span
-          className={`flex min-w-0 flex-1 items-center overflow-hidden rounded-full ${half === 'right' ? 'flex-row-reverse' : ''}`}
+          aria-hidden
+          className={`relative z-[1] flex shrink-0 items-center justify-center rounded-full border-[3px] font-extrabold ${player.color ? 'text-[15px]' : 'text-sm'}`}
           style={{
-            background: `linear-gradient(to ${half === 'right' ? 'left' : 'right'}, #FFFFFF ${INITIALS_ZONE}px, ${color} ${INITIALS_ZONE}px)`,
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            backgroundColor: avatar.bg,
+            color: avatar.fg,
+            borderColor: ringColor(color, serving, receiving),
           }}
         >
-          <span
-            className="flex shrink-0 items-center justify-center self-stretch text-[11px] text-ink"
-            style={{ width: INITIALS_ZONE }}
-          >
-            {initials(name)}
-          </span>
-          <span className={`truncate ${half === 'right' ? 'pr-1.5 pl-3' : 'pr-3 pl-1.5'}`}>{name}</span>
+          {initials(name)}
+        </span>
+        {/* Tucks 14px under the avatar; long names are cut off with an ellipsis. */}
+        <span
+          ref={pillRef}
+          aria-hidden
+          className={`h-[30px] min-w-0 max-w-[116px] truncate text-[13px] leading-[30px] font-extrabold text-white ${
+            right ? '-mr-3.5 rounded-l-full pr-5 pl-3' : '-ml-3.5 rounded-r-full pr-3 pl-5'
+          }`}
+          style={{ backgroundColor: color }}
+        >
+          {name}
         </span>
       </button>
-      {/* Worn on the avatar side of the chip: top-left on the left half, top-right on the right. */}
+      {/* Worn on the avatar's outer top corner. */}
       {crowned && (
         <Crown
-          className={`absolute -top-3.5 ${half === 'left' ? '-left-1.5 -rotate-[18deg]' : '-right-1.5 rotate-[18deg]'}`}
+          className={`absolute -top-3.5 z-[2] ${right ? '-right-1.5 rotate-[18deg]' : '-left-1.5 -rotate-[18deg]'}`}
         />
       )}
-      {serving && showShuttle && <Shuttle className="shrink-0" />}
+      {/* Right after the pill, on the net side. */}
+      {serving && <Shuttle className={`shrink-0 ${right ? 'mr-1' : 'ml-1'}`} />}
     </div>
   )
 }

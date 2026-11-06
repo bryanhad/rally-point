@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AVATAR_COLOR_NAMES } from './avatarStyle'
 
 // No version numbers: stored data is kept as long as it still parses. When adding a
 // field later, give it `.default(...)` so older saved data keeps working.
@@ -11,6 +12,10 @@ export const HISTORY_KEY = 'rally-point:badminton:history'
 export const playerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  // Avatar colour, chosen from the name when the player is created and kept on rename.
+  // Missing on defaults (always grey) and on players saved before colours existed — those
+  // get one on load. `.catch` keeps an unknown colour from resetting the whole roster.
+  color: z.enum(AVATAR_COLOR_NAMES).optional().catch(undefined),
 })
 export type Player = z.infer<typeof playerSchema>
 
@@ -45,6 +50,8 @@ const gameEventSchema = z.discriminatedUnion('type', [
     slot: z.number().int().min(0).max(1),
     playerId: z.string(),
   }),
+  // Doubles partners trade courts mid-game (before the first rally it edits the start instead).
+  z.object({ type: z.literal('swapPartners'), at: z.number(), team: teamIdSchema }),
 ])
 export type GameEvent = z.infer<typeof gameEventSchema>
 
@@ -85,6 +92,14 @@ export const TEAM_COLORS = {
   slate: '#4A5568',
 } as const
 export type TeamColor = keyof typeof TEAM_COLORS
+// Light background + dark text in each team colour, for tags and tinted cards on white.
+export const TEAM_TINTS: Record<TeamColor, { bg: string; fg: string }> = {
+  red: { bg: '#FDECEB', fg: '#A8322C' },
+  blue: { bg: '#E6EDFB', fg: '#2452B8' },
+  orange: { bg: '#FDEEE1', fg: '#9A4A12' },
+  purple: { bg: '#F1E9FC', fg: '#6B37B5' },
+  slate: { bg: '#E9ECF1', fg: '#3A4458' },
+}
 const teamColorSchema = z.enum(Object.keys(TEAM_COLORS) as [TeamColor, ...TeamColor[]])
 
 const sideSwitchSchema = z.discriminatedUnion('kind', [

@@ -95,6 +95,16 @@ Unknown: who can access the app (single user vs anyone with link), auth, upload 
 - Data model for matches, sessions, players.
 - Deployment and access control.
 
+## Player avatars (v2 step 1)
+- `avatarStyle.ts`: `initials`, `AVATAR_COLORS` (8 named bg/fg pairs), `DEFAULT_AVATAR` grey, `avatarColorFor(name)` (hash of trimmed lowercase name), `avatarColors(player)`. Replaces initials.ts.
+- `Player.color` optional enum (`.catch(undefined)`); set once in addPlayer, kept on rename; filled from name on load in BadmintonProvider and saved. History snapshots copy it.
+- `Avatar` takes `player`; `PlayerChip` takes `player`, initials zone uses avatar colours (white for defaults).
+
+## Scoreboard band + rules (v2 step 2)
+- `HeaderBand framed={false}` + `BandTile` (bg-band-tile token, pressed darker + scale .97; gap via className). Scoreboard: rules tile (FlipDigits xs, POINTS TO WIN, AutoSwapStatus Every N/At half/Off + ON/OFF) → `GameRulesSheet`; players tile (first 3 A–Z via `sortByName` in game.ts, count) → PlayersSheet (until step 7).
+- `GameRulesSheet.tsx`: RulesForm draft lives inside the sheet (fresh each open); Save writes totalPoints/sideSwitch/everyPoints; min = hasRallies ? topScore+1 : 1; sticky Save footer.
+- `components/ui/Stepper.tsx`: StepButton, NumberInput (shared with ConfigPage).
+
 ## Scoreboard layout (current)
 - Top bar: ← Sports | Cog (config). Court `top` slot: Singles/Doubles toggle (left) | Switch sides, Switch serve (right). Court, then referee (chair rotated 180°, below court). Row: 'Game of N' | End game, Reset, Redo, Undo. Score buttons. Rallies strip + Match history button.
 - App version: `__APP_VERSION__` injected by Vite `define` from package.json (vite.config.ts), typed in `src/globals.d.ts`; shown in home hero.
