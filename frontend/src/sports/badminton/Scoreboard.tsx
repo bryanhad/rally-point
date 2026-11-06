@@ -103,8 +103,9 @@ export function Scoreboard() {
     toast(describeUndo(last, nameOf))
   }
 
-  // Change player sheet: the current player just closes it, the teammate swaps partners (the
-  // same move as the court's swap button), anyone else is put in (swapping if on court).
+  // Change player sheet: the teammate swaps partners (the same move as the court's swap
+  // button), anyone else is put in (swapping if on court). The current player isn't listed, so
+  // picking them is only guarded against.
   function pickPlayer(playerId: string) {
     if (!picker) return
     const ids = court.teams[picker.team].ids

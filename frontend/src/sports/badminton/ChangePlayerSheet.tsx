@@ -23,8 +23,8 @@ type ChangePlayerSheetProps = {
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-// "Replace <current>": every player in a fixed order (saved A–Z, then Player 1–4), with the
-// current player and the other on-court players tagged.
+// "Change player": the player being replaced in the header, then everyone else in a fixed
+// order (saved A–Z, then Player 1–4), with the other on-court players tagged.
 export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, onPick, onCreate }: ChangePlayerSheetProps) {
   // Keep showing the last target (and who stood there) while the sheet slides away, so the
   // title doesn't change or blank out mid-animation.
@@ -46,6 +46,7 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
   const current = players.find((p) => p.id === shown?.currentId)
   const team = shown?.team ?? 'a'
   const teamName = `Team ${titleCase(teamColors[team])}`
+  const teamHex = TEAM_COLORS[teamColors[team]]
   const teamEyebrow = (
     <span className="flex items-center gap-1.5" style={{ color: TEAM_COLORS[teamColors[team]] }}>
       <span className="size-2 rounded-full" style={{ backgroundColor: TEAM_COLORS[teamColors[team]] }} />
@@ -59,7 +60,23 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
       onClose={onClose}
       label={`Change player for ${teamName}`}
       eyebrow={teamEyebrow}
-      title={`Replace ${current?.name ?? ''}`}
+      title="Change player"
+      subtitle={
+        current && (
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-[13px] font-semibold text-muted">Replacing</span>
+            <span className="flex h-[34px] min-w-0 items-center gap-2 rounded-full bg-soft pr-3 pl-[3px]">
+              <span
+                className="flex shrink-0 rounded-full"
+                style={{ boxShadow: `0 0 0 2px var(--color-soft), 0 0 0 3.5px ${teamHex}` }}
+              >
+                <Avatar player={current} size={28} />
+              </span>
+              <span className="max-w-[160px] truncate text-[15px] font-extrabold">{current.name}</span>
+            </span>
+          </div>
+        )
+      }
       subheader={
         <div className="relative px-4 pt-3">
           <SearchIcon className="pointer-events-none absolute top-[calc(50%+6px)] left-[30px] -translate-y-1/2 text-faint" />
@@ -77,8 +94,8 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
       fade
     >
       <PlayerGrid
-        players={players}
-        currentId={shown?.currentId ?? null}
+        // The player being replaced is shown in the header, not in the grid.
+        players={players.filter((p) => p.id !== shown?.currentId)}
         court={court}
         teamColors={teamColors}
         onPick={onPick}
@@ -89,9 +106,11 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
   )
 }
 
+// Same height and spacing for every tile, so the 3-column grid stays even.
+const TILE = 'flex min-h-[116px] w-full flex-col items-center justify-start gap-1.5 rounded-2xl px-1 pt-2.5 pb-2'
+
 function PlayerGrid({
   players,
-  currentId,
   court,
   teamColors,
   onPick,
@@ -99,7 +118,6 @@ function PlayerGrid({
   newPlayer,
 }: {
   players: Player[]
-  currentId: string | null
   court: CourtState
   teamColors: Config['teamColors']
   onPick: (playerId: string) => void
@@ -113,14 +131,10 @@ function PlayerGrid({
 
   return (
     <div className="px-3 pt-2 pb-10">
-      <ul className="grid grid-cols-3 gap-x-1 gap-y-0.5">
+      <ul className="grid grid-cols-3 gap-x-2 gap-y-1.5">
         {/* Always first, also while filtering (the filter text becomes the starting name). */}
         <li className="min-w-0">
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="flex w-full flex-col items-center gap-1.5 rounded-2xl px-0.5 py-2 text-band-ink active:bg-soft"
-          >
+          <button type="button" onClick={() => setAdding(true)} className={`${TILE} text-band-ink active:bg-soft`}>
             <span className="flex size-[60px] items-center justify-center rounded-full border-2 border-dashed border-[#9DB8D4]">
               <PlusIcon size={22} />
             </span>
@@ -129,8 +143,7 @@ function PlayerGrid({
           </button>
         </li>
         {shown.map((player) => {
-          const isCurrent = player.id === currentId
-          const team = isCurrent ? undefined : teamOf(player.id)
+          const team = teamOf(player.id)
           const teamColor = team ? teamColors[team] : null
           const isDefault = !player.color
           return (
@@ -138,25 +151,12 @@ function PlayerGrid({
               <button
                 type="button"
                 onClick={() => onPick(player.id)}
-                aria-current={isCurrent || undefined}
-                aria-label={
-                  isCurrent
-                    ? `${player.name}, current player`
-                    : teamColor
-                      ? `${player.name}, on court for Team ${titleCase(teamColor)}`
-                      : undefined
-                }
-                className={`flex w-full flex-col items-center gap-1.5 rounded-2xl px-0.5 py-2 ${isCurrent ? 'bg-soft' : 'active:bg-soft'}`}
+                aria-label={teamColor ? `${player.name}, on court for Team ${titleCase(teamColor)}` : undefined}
+                className={`${TILE} active:bg-soft`}
               >
                 <span
                   className="flex rounded-full"
-                  style={{
-                    boxShadow: isCurrent
-                      ? '0 0 0 3px var(--color-soft), 0 0 0 5px var(--color-ink)'
-                      : teamColor
-                        ? `0 0 0 3px #fff, 0 0 0 5px ${TEAM_COLORS[teamColor]}`
-                        : undefined,
-                  }}
+                  style={{ boxShadow: teamColor ? `0 0 0 3px #fff, 0 0 0 5px ${TEAM_COLORS[teamColor]}` : undefined }}
                 >
                   <Avatar player={player} size={60} />
                 </span>
@@ -167,14 +167,10 @@ function PlayerGrid({
                 </span>
                 {/* Always 18px tall so the rows line up. */}
                 <span className="flex h-[18px] items-center">
-                  {isCurrent ? (
-                    <Tag className="bg-ink text-white">CURRENT</Tag>
-                  ) : (
-                    teamColor && (
-                      <Tag style={{ backgroundColor: TEAM_TINTS[teamColor].bg, color: TEAM_TINTS[teamColor].fg }}>
-                        {`TEAM ${teamColor.toUpperCase()}`}
-                      </Tag>
-                    )
+                  {teamColor && (
+                    <Tag style={{ backgroundColor: TEAM_TINTS[teamColor].bg, color: TEAM_TINTS[teamColor].fg }}>
+                      {`TEAM ${teamColor.toUpperCase()}`}
+                    </Tag>
                   )}
                 </span>
               </button>
@@ -207,11 +203,11 @@ function PlayerGrid({
   )
 }
 
-function Tag({ className = '', style, children }: { className?: string; style?: CSSProperties; children: string }) {
+function Tag({ style, children }: { style?: CSSProperties; children: string }) {
   return (
     <span
       aria-hidden
-      className={`flex h-[18px] items-center rounded-full px-2 text-[10px] font-extrabold tracking-[0.08em] ${className}`}
+      className="flex h-[18px] items-center rounded-full px-2 text-[10px] font-extrabold tracking-[0.08em]"
       style={style}
     >
       {children}

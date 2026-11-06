@@ -107,12 +107,24 @@ export const TrashIcon = ({ withLines = false, ...p }: IconProps & { withLines?:
   </Svg>
 )
 
-export const EditIcon = (p: IconProps) => (
+export const EditIcon = (p: IconProps & { strokeWidth?: number }) => (
   <Svg size={18} {...p}>
     <path d="M4 20h4L19 9l-4-4L4 16z" />
     <path d="M13 7l4 4" />
   </Svg>
 )
+
+// Four-point sparkle: filled for the Auto swatch badge, outlined for hint text.
+export const SparkleIcon = ({ filled = false, ...p }: IconProps & { filled?: boolean }) =>
+  filled ? (
+    <svg width={p.size ?? 9} height={p.size ?? 9} viewBox="0 0 24 24" fill="currentColor" className={p.className} aria-hidden>
+      <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" />
+    </svg>
+  ) : (
+    <Svg size={14} {...p}>
+      <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" />
+    </Svg>
+  )
 
 export const PlusIcon = (p: IconProps) => (
   <Svg size={20} strokeWidth={2.4} {...p}>

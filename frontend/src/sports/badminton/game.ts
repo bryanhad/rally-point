@@ -1,5 +1,5 @@
 import { newId } from '../../lib/id'
-import { avatarColorFor } from './avatarStyle'
+import { avatarColorFor, lookFields, type PlayerLook } from './avatarStyle'
 import {
   DEFAULT_PLAYERS,
   type Config,
@@ -45,17 +45,20 @@ export type GameAction =
   | { type: 'newGame' }
   | { type: 'restart' }
   | { type: 'addPlayer'; id: string; name: string }
-  | { type: 'renamePlayer'; id: string; name: string }
+  // Saves the name and colour together (from Edit player).
+  | { type: 'editPlayer'; id: string; name: string; look: PlayerLook }
   | { type: 'deletePlayer'; id: string }
 
 export const MAX_NAME_LENGTH = 24
+
+export const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
 // Actions that don't start a different future, so the redo copy survives them.
 const KEEPS_REDO: ReadonlySet<GameAction['type']> = new Set([
   'undo',
   'redo',
   'addPlayer',
-  'renamePlayer',
+  'editPlayer',
   'deletePlayer',
 ])
 
@@ -124,13 +127,28 @@ function applyAction(state: GameState, action: GameAction): GameState {
       // The form validates first; this guard keeps the reducer safe on its own.
       if (validateName(action.name, allPlayers(state))) return state
       const name = action.name.trim()
-      // The colour is picked once here; renamePlayer leaves it alone.
-      return { ...state, players: [...state.players, { id: action.id, name, color: avatarColorFor(name) }] }
+      return {
+        ...state,
+        players: [...state.players, { id: action.id, name, color: avatarColorFor(name), colorMode: 'auto' }],
+      }
     }
-    case 'renamePlayer': {
+    case 'editPlayer': {
       if (validateName(action.name, allPlayers(state), action.id)) return state
       const name = action.name.trim()
-      return { ...state, players: state.players.map((p) => (p.id === action.id ? { ...p, name } : p)) }
+      return {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === action.id
+            ? {
+                id: p.id,
+                name,
+                // The auto colour follows the name, but an unchanged name keeps the saved one.
+                color: p.color && sameName(p.name, name) ? p.color : avatarColorFor(name),
+                ...lookFields(action.look),
+              }
+            : p,
+        ),
+      }
     }
     case 'deletePlayer':
       // An on-court slot holding this player is filled with a free default during replay.
@@ -351,7 +369,7 @@ export function createHistoryEntry(
   const byId = new Map(players.map((p) => [p.id, p]))
   const side = (team: TeamId) => ({
     score: court.teams[team].score,
-    players: court.teams[team].ids.map((id) => byId.get(id) ?? { id, name: '?' }),
+    players: court.teams[team].ids.map((id) => byId.get(id) ?? { id, name: '?', colorMode: 'auto' as const }),
     // Hex snapshot so the record keeps its colour even if the palette changes later.
     color: TEAM_COLORS[colors[team]],
   })

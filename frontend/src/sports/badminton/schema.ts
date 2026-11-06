@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AVATAR_COLOR_NAMES } from './avatarStyle'
+import { AVATAR_COLOR_NAMES, COLOR_MODES } from './avatarStyle'
 
 // No version numbers: stored data is kept as long as it still parses. When adding a
 // field later, give it `.default(...)` so older saved data keeps working.
@@ -12,10 +12,15 @@ export const HISTORY_KEY = 'rally-point:badminton:history'
 export const playerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  // Avatar colour, chosen from the name when the player is created and kept on rename.
-  // Missing on defaults (always grey) and on players saved before colours existed — those
-  // get one on load. `.catch` keeps an unknown colour from resetting the whole roster.
+  // The auto (name-based) colour: picked when the player is created and again only when the
+  // name changes. Missing on defaults (always grey) and on players saved before colours
+  // existed — those get one on load. `.catch` keeps bad colour data from resetting the roster.
   color: z.enum(AVATAR_COLOR_NAMES).optional().catch(undefined),
+  // Which colour shows: auto (`color`), a preset (`presetId`) or a custom hue (`hue`).
+  // Players saved before this existed load as auto.
+  colorMode: z.enum(COLOR_MODES).catch('auto'),
+  presetId: z.enum(AVATAR_COLOR_NAMES).optional().catch(undefined),
+  hue: z.number().min(0).max(360).optional().catch(undefined),
 })
 export type Player = z.infer<typeof playerSchema>
 
@@ -23,6 +28,7 @@ export type Player = z.infer<typeof playerSchema>
 export const DEFAULT_PLAYERS: readonly Player[] = [1, 2, 3, 4].map((n) => ({
   id: `default-${n}`,
   name: `Player ${n}`,
+  colorMode: 'auto' as const,
 }))
 
 // Teams keep their identity for the whole game; team A starts on the left of the screen.

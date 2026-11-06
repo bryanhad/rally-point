@@ -42,8 +42,9 @@ function loadInitial() {
   const config = loadStored(CONFIG_KEY, configSchema, defaultConfig)
   const history = loadStored(HISTORY_KEY, historySchema, defaultHistory)
 
-  // Players saved before avatar colours existed get one from their name now; the save effect
-  // below writes it back, so it is fixed from here on and later renames keep it.
+  // Players saved before avatar colours existed get one from their name now, and players saved
+  // before colour modes existed parse as auto (playerSchema). The save effect below writes both
+  // back, so the migration happens once and silently.
   const players = (roster.status === 'missing' ? readLegacyPlayers() : roster.value.players).map((p) =>
     p.color ? p : { ...p, color: avatarColorFor(p.name) },
   )

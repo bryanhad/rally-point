@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edit player — swatch grid</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button,input{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 900px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+
+  <div style="background: #2268A6; height: 128px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.55)"></div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 225px; background: #FFFFFF; border-radius: 26px 26px 0 0"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.45)"></div>
+
+  <div role="dialog" aria-modal="true" aria-labelledby="epTitle" style="position: absolute; left: 16px; right: 16px; top: 96px; background: #FFFFFF; border-radius: 24px; box-shadow: 0 20px 50px rgba(14,18,26,0.3); display: flex; flex-direction: column">
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 0 20px">
+      <div id="epTitle" style="font-size: 20px; font-weight: 800">Edit player</div>
+      <button aria-label="Close" style="width: 44px; height: 44px; border: none; border-radius: 12px; background: #EEF1F5; color: #141A26; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div style="padding: 6px 20px 0; display: flex; flex-direction: column; align-items: center; gap: 8px">
+      <span aria-hidden="true" style="width: 84px; height: 84px; border-radius: 50%; background: #DCEFFD; color: #0B5C99; font-size: 30px; font-weight: 800; display: flex; align-items: center; justify-content: center">T</span>
+      <div style="display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: #FDECEB; color: #A8322C; font-size: 12px; font-weight: 700">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #DD534C"></span>On court · Team Red
+      </div>
+    </div>
+
+    <div style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 6px">
+      <label for="epName" style="font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #5A6478">NAME</label>
+      <input id="epName" value="tiffany" style="height: 48px; box-sizing: border-box; border: 1.5px solid #D3D8E1; border-radius: 14px; padding: 0 14px; font-size: 16px; font-weight: 600; color: #141A26; background: #FFFFFF">
+    </div>
+
+    <div style="padding: 18px 20px 0; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #5A6478">AVATAR COLOUR</div>
+      </div>
+      <div role="radiogroup" aria-label="Avatar colour" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; justify-items: center">
+        <button role="radio" aria-checked="false" aria-label="Auto, colour from name" style="position: relative; width: 42px; height: 42px; border-radius: 50%; border: 2px dashed #A3245C; background: #FBE1EC; color: #A3245C; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-sizing: border-box">T
+          <span style="position: absolute; right: -5px; top: -5px; width: 18px; height: 18px; border-radius: 50%; background: #141A26; color: #F2C94C; border: 2px solid #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg></span>
+        </button>
+        <button role="radio" aria-checked="false" aria-label="Teal" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #D5F0EC; color: #0F6B5E; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Mint" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #D9F5E8; color: #0F6A47; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Green" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #DDF2DF; color: #256B2E; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Lime" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #ECF5D0; color: #4D6A0B; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Gold" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #FFF1C2; color: #7A5B00; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Amber" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #FCEFD0; color: #8A5A00; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Orange" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #FDE5D6; color: #9A4210; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Brown" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #F1E4D6; color: #6B4423; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Rose" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #FDE2E1; color: #A82A26; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Pink, from name" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #FBE1EC; color: #A3245C; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Violet" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #F1E1FB; color: #7A2DA0; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Purple" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #EAE2FB; color: #5B3BA8; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Indigo" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #E0E6FB; color: #3346A8; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="true" aria-label="Sky, selected" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #DCEFFD; color: #0B5C99; font-size: 15px; font-weight: 800; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 5px #141A26">T</button>
+        <button role="radio" aria-checked="false" aria-label="Cyan" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #D8EEF7; color: #0E6385; font-size: 15px; font-weight: 800">T</button>
+        <button role="radio" aria-checked="false" aria-label="Slate" style="width: 42px; height: 42px; border-radius: 50%; border: none; background: #E3E8EF; color: #334155; font-size: 15px; font-weight: 800">T</button>
+        <a href="v3-modal-edit-player-custom-colour.html" aria-label="Pick a custom colour" style="display: block; width: 42px; height: 42px; border-radius: 50%; border: none; padding: 3px; background: conic-gradient(#E5484D, #F2C94C, #46A758, #12A594, #3E63DD, #8E4EC6, #E5484D); box-sizing: border-box">
+          <span style="width: 100%; height: 100%; border-radius: 50%; background: #FFFFFF; color: #141A26; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+        </a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8A93A6">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>
+        <span><span style="font-weight: 700; color: #5A6478">Auto</span> uses the colour picked from the player's name.</span>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; padding: 14px 20px 18px; border-top: 1px solid #EEF1F5; display: flex; align-items: center; justify-content: space-between; gap: 10px">
+      <button style="height: 48px; padding: 0 12px; border: none; border-radius: 14px; background: transparent; color: #B42318; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>Delete
+      </button>
+      <button style="height: 48px; padding: 0 22px; border: none; border-radius: 14px; background: #2268A6; color: #FFFFFF; font-size: 15px; font-weight: 800">Save changes</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

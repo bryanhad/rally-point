@@ -16,6 +16,8 @@ type BottomSheetProps = {
   label?: string
   // Small uppercase line above the title (e.g. "BADMINTON").
   eyebrow?: ReactNode
+  // Optional row under the title (e.g. who's being replaced). Aligns the close button to the top.
+  subtitle?: ReactNode
   // Extra header buttons, placed before the close button.
   actions?: ReactNode
   // Fixed content under the title that doesn't scroll (e.g. a filter or an Add button). The
@@ -31,7 +33,7 @@ type BottomSheetProps = {
 // Bottom sheet: slides up over a fading overlay, always 75% of the viewport tall (whatever the
 // content), and closes by dragging down, the X button, tapping the overlay or Escape — all with
 // the same animation.
-export function BottomSheet({ open, onClose, title, label, eyebrow, actions, subheader, fade, footer, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, actions, subheader, fade, footer, children }: BottomSheetProps) {
   const { mounted, shown } = usePresence(open, DURATION)
   const reduced = usePrefersReducedMotion()
   useScrollLock(mounted)
@@ -153,14 +155,17 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, actions, sub
           <div className="flex justify-center pt-2">
             <span className="h-[5px] w-10 rounded-full bg-line-strong" />
           </div>
-          <div className="flex items-center justify-between gap-2 pt-2 pr-3 pl-5">
-            <div className="flex min-w-0 flex-col gap-0.5">
+          <div
+            className={`flex justify-between gap-2 pt-2 pr-3 pl-5 ${subtitle ? 'items-start' : 'items-center'}`}
+          >
+            <div className={`flex min-w-0 flex-col ${subtitle ? 'gap-1' : 'gap-0.5'}`}>
               {eyebrow && (
                 <div className="truncate text-[11px] font-extrabold tracking-[0.22em] text-muted uppercase">
                   {eyebrow}
                 </div>
               )}
               <h2 className="truncate text-[22px] font-extrabold">{title}</h2>
+              {subtitle && <div className="mt-1.5 min-w-0">{subtitle}</div>}
             </div>
             <div className="flex shrink-0 gap-1.5">
               {actions}
