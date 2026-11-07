@@ -1,15 +1,19 @@
 import { Link } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { newId } from '../../lib/id'
 import { writeLastSport } from '../../lib/lastSport'
-import { ConfirmDialog } from '../../components/ui/Dialog'
+import { ConfirmDialog, Dialog, DialogButton } from '../../components/ui/Dialog'
 import { digits } from '../../components/ui/digits'
 import { FlipDigits } from '../../components/ui/FlipDigits'
 import { BandTile, HeaderBand } from '../../components/ui/HeaderBand'
 import {
+  AlertIcon,
   BackIcon,
+  ClockIcon,
   ChevronRightIcon,
+  PlusIcon,
+  UserPlusIcon,
   EditIcon,
   FlagIcon,
   GearIcon,
@@ -29,12 +33,15 @@ import {
   createHistoryEntry,
   describeRedo,
   describeUndo,
+  EMPTY_SLOT,
+  hasEmptySlot,
   hasRallies,
   otherTeam,
   replay,
   screenScore,
   shouldSwitchSides,
   sortByName,
+  TEAM_IDS,
   teamOn,
   type RallyStep,
   type SideKey,
@@ -45,9 +52,24 @@ import { GameRulesSheet } from './GameRulesSheet'
 import { HistorySheet } from './HistorySheet'
 import { ManagePlayersSheet } from './ManagePlayersSheet'
 import { RallySheet } from './RallySheet'
+import { dayLabel, isIdle, nextGameNumber, sessionDateLabel, timeLabel } from './session'
+import { PickPlayersDialog } from './PickPlayersDialog'
+import { MIN_PLAYERS } from './playerList'
+import { SessionSheet } from './SessionSheet'
+import { NewSessionDialog } from './NewSessionDialog'
+import { SessionPlayersDialog } from './SessionPlayersDialog'
+import { GameCountsDialog } from './GameCountsDialog'
 import { Racket, Rackets, ServerIcon, SidesIcon } from './icons'
 import { initials } from './avatarStyle'
-import { TEAM_COLORS, type Config, type HistoryEntry, type SideSwitch, type TeamId } from './schema'
+import {
+  TEAM_COLORS,
+  type Config,
+  type HistoryEntry,
+  type Player,
+  type Session,
+  type SideSwitch,
+  type TeamId,
+} from './schema'
 
 const SIDES: SideKey[] = ['left', 'right']
 
@@ -71,6 +93,27 @@ export function Scoreboard() {
   const [confirm, setConfirm] = useState<'end' | 'reset' | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [playersOpen, setPlayersOpen] = useState(false)
+  const [sessionOpen, setSessionOpen] = useState(false)
+  const [newSessionOpen, setNewSessionOpen] = useState(false)
+  const [sessionPlayersOpen, setSessionPlayersOpen] = useState(false)
+  const [countsOpen, setCountsOpen] = useState(false)
+  const [pickOpen, setPickOpen] = useState(false)
+  // "Not enough players" for doubles, and whether to switch once players are added.
+  const [needsPlayers, setNeedsPlayers] = useState(false)
+  const [doublesAfterPick, setDoublesAfterPick] = useState(false)
+  // 12-hour prompt: checked on opening and whenever the app comes back to the front.
+  const [idle, setIdle] = useState(() => isIdle(game))
+  const gameRef = useRef(game)
+  useEffect(() => {
+    gameRef.current = game
+  }, [game])
+  useEffect(() => {
+    const check = () => {
+      if (document.visibilityState === 'visible') setIdle(isIdle(gameRef.current))
+    }
+    document.addEventListener('visibilitychange', check)
+    return () => document.removeEventListener('visibilitychange', check)
+  }, [])
 
   // Remember badminton as the last sport played, for the home page's in-progress card.
   useEffect(() => writeLastSport('badminton'), [])
@@ -78,8 +121,24 @@ export function Scoreboard() {
   const players = allPlayers(game)
   const byId = new Map(players.map((p) => [p.id, p]))
   const started = hasRallies(game)
+  const session = game.sessions.current
+  // Between games in a session: the court waits for this game's players.
+  const pickPending = !!session && game.awaitingPick
+  // The court is covered (no session, or picking): game controls are off.
+  const blocked = !session || pickPending
+  // Last game's lineup, for "Same players": only once a game has been played, and only if
+  // everyone on it is still in the session.
+  const lineupIds = [...court.teams[court.leftTeam].ids, ...court.teams[otherTeam(court.leftTeam)].ids]
+  const sameLineup =
+    session && session.games.length > 0 && lineupIds.every((id) => id !== EMPTY_SLOT && session.playerIds.includes(id))
+      ? lineupIds.map((id) => byId.get(id)).filter((p): p is Player => !!p)
+      : null
+  // Scoring (and ending the game) waits until every spot on court has a player.
+  const emptySpot = hasEmptySlot(court)
 
   function rally(team: TeamId) {
+    // Play happens inside a session: without one, a score tap starts one.
+    if (!session) return setNewSessionOpen(true)
     const score = court.teams[team].score + 1
     const rules = { totalPoints: config.totalPoints, sideSwitch: config.sideSwitch }
     if (score === config.totalPoints) setMatchPointTeam(team)
@@ -119,11 +178,18 @@ export function Scoreboard() {
     setPicker(null)
   }
 
-  // New player from the Change player sheet: always saved; "Add & replace" also puts them in the
-  // slot and closes the sheet, "Just add" leaves the sheet open.
-  function createPlayer(name: string, replace: boolean) {
+  // Saves a new player and returns their id.
+  function savePlayer(name: string) {
     const id = newId()
     dispatch({ type: 'addPlayer', id, name })
+    return id
+  }
+
+  // New player from the Change player sheet: always saved, and joins the running session;
+  // "Add & replace" also puts them in the slot and closes the sheet, "Just add" leaves it open.
+  function createPlayer(name: string, replace: boolean) {
+    const id = savePlayer(name)
+    if (session) dispatch({ type: 'setSessionPlayers', playerIds: [...session.playerIds, id] })
     if (replace && picker) {
       dispatch({ type: 'assignPlayer', ...picker, playerId: id, at: Date.now() })
       setPicker(null)
@@ -139,7 +205,14 @@ export function Scoreboard() {
   }
 
   function finishGame(winner: TeamId | 'draw') {
-    const entry = createHistoryEntry(court, players, winner, config.teamColors, config.totalPoints)
+    const entry = createHistoryEntry(
+      court,
+      players,
+      winner,
+      config.teamColors,
+      config.totalPoints,
+      game.sessions.current?.id,
+    )
     addHistoryEntry(entry)
     // Start the next game right away so the same game can't be recorded twice.
     dispatch({ type: 'newGame' })
@@ -157,6 +230,13 @@ export function Scoreboard() {
 
   function requestMode(mode: Config['mode']) {
     if (mode === config.mode) return
+    // A session needs enough players for doubles first.
+    if (mode === 'doubles' && session && session.playerIds.length < MIN_PLAYERS.doubles) return setNeedsPlayers(true)
+    switchMode(mode)
+  }
+
+  // Mid-game, confirm first (the game restarts).
+  function switchMode(mode: Config['mode']) {
     if (started) setPendingMode(mode)
     else applyMode(mode)
   }
@@ -177,7 +257,8 @@ export function Scoreboard() {
     const name = config.teamColors[team]
     return name.charAt(0).toUpperCase() + name.slice(1)
   }
-  const teamInitials = (team: TeamId) => court.teams[team].ids.map((id) => initials(nameOf(id))).join(' · ')
+  const teamInitials = (team: TeamId) =>
+    court.teams[team].ids.map((id) => (id === EMPTY_SLOT ? '?' : initials(nameOf(id)))).join(' · ')
   const newestRally = rallies[0]?.number
 
   return (
@@ -196,40 +277,17 @@ export function Scoreboard() {
           </Link>
         }
       >
+        <SessionTile session={session} players={game.players} onClick={() => setSessionOpen(true)} />
         <BandTile
-          // Narrower than the 390px mockup: tighter gaps so the rule text still fits.
-          className="flex-1 gap-2.5 max-[389px]:gap-2"
+          className="shrink-0 gap-2.5"
           onClick={() => setRulesOpen(true)}
           aria-label={`Game rules: ${config.totalPoints} points to win, ${swapRuleLabel(config.sideSwitch)}. Edit`}
           icon={<EditIcon size={13} />}
         >
           <FlipDigits tiles={digits(config.totalPoints)} size="xs" />
-          <div className="flex min-w-0 flex-1 flex-col gap-[5px] max-[389px]:-ml-0.5">
+          <div className="flex min-w-0 flex-col gap-[5px]">
             <div className={TILE_CAPTION}>POINTS TO WIN</div>
             <AutoSwapStatus sideSwitch={config.sideSwitch} />
-          </div>
-        </BandTile>
-        <BandTile
-          // 112px as in the mockup, growing for a two- or three-digit count.
-          className="min-w-28 shrink-0 gap-1.5 pl-2.5"
-          onClick={() => setPlayersOpen(true)}
-          aria-label={`Manage players, ${game.players.length} ${game.players.length === 1 ? 'player' : 'players'}`}
-          icon={<ChevronRightIcon size={13} />}
-        >
-          <div className="flex flex-col gap-[5px]">
-            <div className={TILE_CAPTION}>PLAYERS</div>
-            <div className="flex items-center">
-              {game.players.length === 0 ? (
-                <span className="size-[22px] rounded-full border-[1.5px] border-dashed border-white/70" />
-              ) : (
-                sortByName(game.players)
-                  .slice(0, 3)
-                  .map((p, i) => (
-                    <Avatar key={p.id} player={p} size={22} className={`border-2 border-band ${i > 0 ? '-ml-[7px]' : ''}`} />
-                  ))
-              )}
-              <span className="ml-[5px] text-[13px] font-extrabold">{game.players.length}</span>
-            </div>
           </div>
         </BandTile>
       </HeaderBand>
@@ -281,26 +339,38 @@ export function Scoreboard() {
           onPick={(team, slot) => setPicker({ team, slot })}
           // Only before the first rally; Court hides it for singles.
           onSwapPartners={started ? undefined : (team) => dispatch({ type: 'swapPartners', team, at: Date.now() })}
+          overlay={
+            !session ? (
+              <NoSessionOverlay onStart={() => setNewSessionOpen(true)} />
+            ) : pickPending ? (
+              <PickOverlay
+                gameNumber={nextGameNumber(session)}
+                same={sameLineup}
+                onPick={() => setPickOpen(true)}
+                onSame={() => dispatch({ type: 'startGame' })}
+              />
+            ) : undefined
+          }
         />
 
         {/* Game actions: history controls on the left, reset/end on the right */}
         <div className="mb-2 flex shrink-0 items-center justify-between">
           <div className="flex gap-1.5">
-            <Button icon={<UndoIcon />} label="Undo" onClick={undo} disabled={game.log.length === 0} />
-            <Button aria-label="Redo" icon={<RedoIcon />} onClick={redo} disabled={!canRedo(game)} />
+            <Button icon={<UndoIcon />} label="Undo" onClick={undo} disabled={blocked || game.log.length === 0} />
+            <Button aria-label="Redo" icon={<RedoIcon />} onClick={redo} disabled={blocked || !canRedo(game)} />
           </div>
           <div className="flex gap-1.5">
             <Button
               aria-label="Reset game"
               icon={<ResetIcon />}
               onClick={() => setConfirm('reset')}
-              disabled={game.log.length === 0}
+              disabled={blocked || game.log.length === 0}
             />
             {/* Only once a team has reached the total (e.g. after choosing Keep playing). */}
             <button
               type="button"
               onClick={() => setConfirm('end')}
-              disabled={!reachedTotal}
+              disabled={blocked || !reachedTotal || emptySpot}
               title={reachedTotal ? undefined : `Available once a team reaches ${config.totalPoints}`}
               className="flex h-11 items-center gap-1.5 rounded-control bg-ink px-3 text-[13px] font-bold text-white active:opacity-75 disabled:border-[1.5px] disabled:border-dashed disabled:border-line-strong disabled:bg-white disabled:text-faint"
             >
@@ -309,6 +379,13 @@ export function Scoreboard() {
             </button>
           </div>
         </div>
+
+        {!blocked && emptySpot && (
+          <p className="-mt-0.5 mb-1.5 flex h-[22px] shrink-0 items-center justify-center gap-1.5 text-xs font-bold text-muted">
+            <AlertIcon size={14} />
+            Fill every spot on the court to keep scoring
+          </p>
+        )}
 
         {/* Scores: tapping a side records a rally won by the team on that side */}
         <div className="flex min-h-20 flex-1 gap-2.5">
@@ -319,8 +396,10 @@ export function Scoreboard() {
                 key={side}
                 type="button"
                 onClick={() => rally(team)}
+                // Without a session the tap opens New session instead.
+                disabled={session !== null && (pickPending || emptySpot)}
                 aria-label={`Point to Team ${colorName(team)}`}
-                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[22px] text-white select-none active:opacity-85"
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[22px] text-white select-none enabled:active:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ backgroundColor: TEAM_COLORS[config.teamColors[team]], containerType: 'size' }}
               >
                 <span
@@ -401,10 +480,89 @@ export function Scoreboard() {
         onCancel={() => setPendingMode(null)}
       />
 
+      <Dialog
+        open={idle && !!session}
+        role="alertdialog"
+        badge={<ClockIcon size={26} />}
+        title="Welcome back"
+        description="It's been over 12 hours since you last played. Start a new session with a new set of players?"
+        actions={
+          <>
+            <DialogButton
+              tone="primary"
+              onClick={() => {
+                setIdle(false)
+                setNewSessionOpen(true)
+              }}
+            >
+              New session
+            </DialogButton>
+            <DialogButton
+              onClick={() => {
+                setIdle(false)
+                dispatch({ type: 'keepSession', at: Date.now() })
+              }}
+            >
+              Keep current session
+            </DialogButton>
+          </>
+        }
+      >
+        {session && (
+          <p className="-mt-1 text-xs text-subtle">
+            Current session: {sessionDateLabel(session.startedAt)} · {session.playerIds.length}{' '}
+            {session.playerIds.length === 1 ? 'player' : 'players'}
+          </p>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={needsPlayers}
+        role="alertdialog"
+        onDismiss={() => setNeedsPlayers(false)}
+        badge={<Rackets className="h-6 w-7" />}
+        title="Not enough players"
+        description="Doubles needs at least 4 players. Please pick more players for the current session."
+        actions={
+          <>
+            <DialogButton
+              tone="primary"
+              onClick={() => {
+                setNeedsPlayers(false)
+                setDoublesAfterPick(true)
+                setSessionPlayersOpen(true)
+              }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <UserPlusIcon size={18} />
+                Pick players
+              </span>
+            </DialogButton>
+            <DialogButton onClick={() => setNeedsPlayers(false)}>Stay on singles</DialogButton>
+          </>
+        }
+      >
+        {session && (
+          <div className="flex items-center gap-2.5 rounded-[14px] bg-page px-3 py-2">
+            <div className="flex shrink-0" aria-hidden>
+              {sortByName(game.players.filter((p) => session.playerIds.includes(p.id)))
+                .slice(0, 3)
+                .map((p, i) => (
+                  <Avatar key={p.id} player={p} size={30} className={`border-2 border-page ${i > 0 ? '-ml-[9px]' : ''}`} />
+                ))}
+            </div>
+            <span className="text-[13px] font-bold text-ink-2">
+              {session.playerIds.length} {session.playerIds.length === 1 ? 'player' : 'players'} in this session
+            </span>
+          </div>
+        )}
+      </Dialog>
+
       <ChangePlayerSheet
         target={picker}
         court={court}
-        saved={game.players}
+        // With a session running, only its players can be picked.
+        saved={session ? game.players.filter((p) => session.playerIds.includes(p.id)) : game.players}
         teamColors={config.teamColors}
         onClose={() => setPicker(null)}
         onPick={pickPlayer}
@@ -465,6 +623,65 @@ export function Scoreboard() {
 
       <HistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} />
       <GameRulesSheet open={rulesOpen} onClose={() => setRulesOpen(false)} />
+      <SessionSheet
+        open={sessionOpen}
+        onClose={() => setSessionOpen(false)}
+        session={session}
+        players={game.players}
+        // Opens on top of the Session sheet; closing it comes back here.
+        onManagePlayers={() => setPlayersOpen(true)}
+        onNewSession={() => setNewSessionOpen(true)}
+        onEditPlayers={() => setSessionPlayersOpen(true)}
+        onGameCounts={() => setCountsOpen(true)}
+      />
+      <PickPlayersDialog
+        open={pickOpen}
+        onClose={() => setPickOpen(false)}
+        session={session}
+        players={game.players}
+        mode={config.mode}
+        teamColors={config.teamColors}
+        leftTeam={court.leftTeam}
+        onStart={(lineup) => {
+          dispatch({ type: 'startGame', lineup })
+          setPickOpen(false)
+        }}
+      />
+      <GameCountsDialog open={countsOpen} onClose={() => setCountsOpen(false)} session={session} players={game.players} />
+      <SessionPlayersDialog
+        open={sessionPlayersOpen}
+        onClose={() => {
+          setSessionPlayersOpen(false)
+          setDoublesAfterPick(false)
+        }}
+        session={session}
+        players={game.players}
+        onCourt={TEAM_IDS.flatMap((t) => court.teams[t].ids).filter((id) => id !== EMPTY_SLOT)}
+        mode={config.mode}
+        onCreatePlayer={savePlayer}
+        onSave={(playerIds) => {
+          dispatch({ type: 'setSessionPlayers', playerIds })
+          setSessionPlayersOpen(false)
+          // Opened from "Not enough players": with enough now, carry on to doubles.
+          if (doublesAfterPick && playerIds.length >= MIN_PLAYERS.doubles) switchMode('doubles')
+          setDoublesAfterPick(false)
+        }}
+      />
+      <NewSessionDialog
+        open={newSessionOpen}
+        onClose={() => setNewSessionOpen(false)}
+        players={game.players}
+        current={session}
+        mode={config.mode}
+        onCreatePlayer={savePlayer}
+        onStart={({ startedAt, mode, playerIds }) => {
+          // The session empties the court for the chosen mode; the setting follows it.
+          dispatch({ type: 'startSession', id: newId(), startedAt, mode, playerIds })
+          setConfig((c) => ({ ...c, mode }))
+          setNewSessionOpen(false)
+          setSessionOpen(false)
+        }}
+      />
       <ManagePlayersSheet open={playersOpen} onClose={() => setPlayersOpen(false)} />
 
     </div>
@@ -474,6 +691,121 @@ export function Scoreboard() {
 const BAND_ICON_LINK = 'flex size-11 items-center justify-center rounded-control text-white active:bg-white/15'
 
 const TILE_CAPTION = 'truncate text-[10px] leading-none font-bold tracking-[0.2em] opacity-85 max-[389px]:tracking-[0.12em]'
+
+// Court overlay with no session running: play starts with a session.
+function NoSessionOverlay({ onStart }: { onStart: () => void }) {
+  return (
+    <>
+      <div className="text-[11px] font-extrabold tracking-[0.22em] text-white/80">NO SESSION</div>
+      <button
+        type="button"
+        onClick={onStart}
+        className="flex h-12 items-center gap-2 rounded-[14px] bg-white px-[22px] text-[15px] font-extrabold text-band-ink active:opacity-85"
+      >
+        <PlusIcon size={18} />
+        Start a session
+      </button>
+    </>
+  )
+}
+
+// Court overlay before each game of a session: pick its players, or keep last game's.
+function PickOverlay({
+  gameNumber,
+  same,
+  onPick,
+  onSame,
+}: {
+  gameNumber: number
+  same: Player[] | null
+  onPick: () => void
+  onSame: () => void
+}) {
+  return (
+    <>
+      <div className="text-[11px] font-extrabold tracking-[0.22em] text-white/80">NEXT UP · GAME {gameNumber}</div>
+      <button
+        type="button"
+        onClick={onPick}
+        className="flex h-12 items-center gap-2 rounded-[14px] bg-white px-[22px] text-[15px] font-extrabold text-band-ink active:opacity-85"
+      >
+        <UserPlusIcon size={18} />
+        Pick players
+      </button>
+      {same && (
+        <button
+          type="button"
+          onClick={onSame}
+          aria-label={`Same players: ${same.map((p) => p.name).join(', ')}`}
+          className="flex h-10 items-center gap-2 rounded-control border-[1.5px] border-white/55 pr-3.5 pl-2 text-[13px] font-bold text-white active:bg-white/10"
+        >
+          <span className="flex" aria-hidden>
+            {same.map((p, i) => (
+              <Avatar key={p.id} player={p} size={22} className={`border-2 border-[#3A3F49] ${i > 0 ? '-ml-[9px]' : ''}`} />
+            ))}
+          </span>
+          Same players
+        </button>
+      )}
+    </>
+  )
+}
+
+// "today", "yesterday", "3 days ago", "12 Nov": the day label, read aloud.
+function spokenDay(at: number) {
+  const label = dayLabel(at)
+  if (label === 'Today' || label === 'Yesterday') return label.toLowerCase()
+  return label.replace(/^(\d)d ago$/, '$1 days ago')
+}
+
+// Left band tile: when the session started and who's in it, or a prompt to start one. Opens
+// the Session sheet either way.
+function SessionTile({ session, players, onClick }: { session: Session | null; players: Player[]; onClick: () => void }) {
+  if (!session) {
+    return (
+      <BandTile
+        className="flex-1 gap-1.5 pr-2 pl-3"
+        onClick={onClick}
+        aria-label="No session. Start a session"
+        icon={<PlusIcon size={13} />}
+        iconClassName="max-[389px]:hidden"
+      >
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="truncate text-[13px] font-extrabold opacity-85">No session</div>
+          <span className="flex h-[22px] items-center self-start rounded-full bg-white px-2.5 text-xs font-extrabold text-band-ink">
+            Start
+          </span>
+        </div>
+      </BandTile>
+    )
+  }
+  const inSession = sortByName(players.filter((p) => session.playerIds.includes(p.id)))
+  const extra = inSession.length - 3
+  const count = `${inSession.length} ${inSession.length === 1 ? 'player' : 'players'}`
+  return (
+    <BandTile
+      className="flex-1 gap-1.5 pr-2 pl-3"
+      onClick={onClick}
+      aria-label={`Session: ${spokenDay(session.startedAt)} at ${timeLabel(session.startedAt)}, ${count}. Open session`}
+      icon={<ChevronRightIcon size={13} />}
+      // Below 390px the tile is too narrow for the chevron next to the avatars.
+      iconClassName="max-[389px]:hidden"
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        {/* Day only; the time is in the Session sheet (the tile has no room for both). */}
+        <div className="truncate text-[13px] font-extrabold">{dayLabel(session.startedAt)}</div>
+        {/* Fixed-size avatars overlapping by half: later ones may cover earlier initials, but
+            they never squash. */}
+        <div className="flex min-w-0 items-center overflow-hidden" aria-hidden>
+          {inSession.slice(0, 3).map((p, i) => (
+            <Avatar key={p.id} player={p} size={24} className={`border-2 border-band-tile ${i > 0 ? '-ml-3' : ''}`} />
+          ))}
+          {extra > 0 && <span className="ml-1.5 shrink-0 text-[13px] font-extrabold whitespace-nowrap">+{extra}</span>}
+        </div>
+      </div>
+    </BandTile>
+  )
+}
 
 // Rule in words, for the tile's accessible name.
 function swapRuleLabel(sideSwitch: SideSwitch) {

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session players</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button,input{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 900px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+
+  <div style="background: #2268A6; height: 128px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.55)"></div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 225px; background: #FFFFFF; border-radius: 26px 26px 0 0"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.45)"></div>
+
+  <div role="dialog" aria-modal="true" aria-labelledby="spTitle" style="position: absolute; left: 16px; right: 16px; top: 48px; background: #FFFFFF; border-radius: 24px; box-shadow: 0 20px 50px rgba(14,18,26,0.3); display: flex; flex-direction: column">
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 0 20px">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 11px; font-weight: 800; letter-spacing: 0.22em; color: #5A6478">SESSION · 8 SELECTED</div>
+        <div id="spTitle" style="font-size: 20px; font-weight: 800">Session players</div>
+      </div>
+      <button aria-label="Close" style="width: 44px; height: 44px; border: none; border-radius: 12px; background: #EEF1F5; color: #141A26; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div style="padding: 12px 16px 4px; position: relative">
+      <label for="spFilter" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Find a player</label>
+      <svg style="position: absolute; left: 30px; top: 26px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+      <input id="spFilter" placeholder="Find a player" style="width: 100%; height: 46px; box-sizing: border-box; border: none; border-radius: 14px; padding: 0 14px 0 42px; font-size: 16px; color: #141A26; background: #F2F4F7">
+    </div>
+
+    <div style="position: relative; height: 470px; overflow: hidden; margin-top: 4px">
+      <div role="group" aria-label="Players in this session" style="padding: 6px 12px 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 6px">
+
+        <button style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #1F5F99">
+          <span style="width: 56px; height: 56px; border-radius: 50%; border: 2px dashed #9DB8D4; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+          <span style="font-size: 13px; font-weight: 700">New player</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-label="andre putra" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #D8EEF7; color: #0E6385; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #2268A6">AP</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #2268A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="max-width: 100%; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">andre putra</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-disabled="true" aria-label="bryan, on court, can't be removed" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #141A26; cursor: default">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #D5F0EC; color: #0F6B5E; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #A4AEC0">B</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #8A93A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 700">bryan</span>
+          <span style="display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #5A6478"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>On court</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-label="felicia" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #FDE5D6; color: #9A4210; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #2268A6">F</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #2268A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 700">felicia</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-disabled="true" aria-label="hansen, on court, can't be removed" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #141A26; cursor: default">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #FCEFD0; color: #8A5A00; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #A4AEC0">H</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #8A93A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 700">hansen</span>
+          <span style="display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #5A6478"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>On court</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-label="jessica" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #FDE2E1; color: #A82A26; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #2268A6">J</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #2268A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 700">jessica</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-disabled="true" aria-label="kevin sanjaya, on court, can't be removed" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #141A26; cursor: default">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #E0E6FB; color: #3346A8; font-size: 17px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #A4AEC0">KS</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #8A93A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="max-width: 100%; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">kevin sanjaya</span>
+          <span style="display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #5A6478"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>On court</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-label="reinaldri wicaksono" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #DDF2DF; color: #256B2E; font-size: 17px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #2268A6">RW</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #2268A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="max-width: 100%; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">reinaldri wicaksono</span>
+        </button>
+
+        <button role="checkbox" aria-checked="true" aria-disabled="true" aria-label="tiffany, on court, can't be removed" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #141A26; cursor: default">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #FBE1EC; color: #A3245C; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 4.5px #A4AEC0">T</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #8A93A6; border: 2px solid #FFFFFF; color: #FFFFFF; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 700">tiffany</span>
+          <span style="display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #5A6478"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>On court</span>
+        </button>
+
+        <button role="checkbox" aria-checked="false" aria-label="gregorius" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #D9F5E8; color: #0F6A47; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">G</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #C5CBD6; box-sizing: border-box"></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 600; color: #3A4458">gregorius</span>
+        </button>
+
+        <button role="checkbox" aria-checked="false" aria-label="marcus" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #FFF1C2; color: #7A5B00; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">M</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #C5CBD6; box-sizing: border-box"></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 600; color: #3A4458">marcus</span>
+        </button>
+
+        <button role="checkbox" aria-checked="false" aria-label="nadia" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #DCEFFD; color: #0B5C99; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">N</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #C5CBD6; box-sizing: border-box"></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 600; color: #3A4458">nadia</span>
+        </button>
+
+        <button role="checkbox" aria-checked="false" aria-label="steven" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #E3E8EF; color: #334155; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">S</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #C5CBD6; box-sizing: border-box"></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 600; color: #3A4458">steven</span>
+        </button>
+
+        <button role="checkbox" aria-checked="false" aria-label="wiliam" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #EAE2FB; color: #5B3BA8; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">W</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #C5CBD6; box-sizing: border-box"></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 600; color: #3A4458">wiliam</span>
+        </button>
+
+        <button role="checkbox" aria-checked="false" aria-label="yohanes" style="border: none; background: transparent; width: 100%; min-height: 108px; border-radius: 16px; padding: 10px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #141A26">
+          <span style="position: relative; width: 56px; height: 56px; display: block">
+            <span style="width: 56px; height: 56px; border-radius: 50%; background: #ECF5D0; color: #4D6A0B; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center">Y</span>
+            <span style="position: absolute; right: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #C5CBD6; box-sizing: border-box"></span>
+          </span>
+          <span style="font-size: 13px; font-weight: 600; color: #3A4458">yohanes</span>
+        </button>
+      </div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(rgba(255,255,255,0), #FFFFFF); pointer-events: none"></div>
+    </div>
+
+    <div style="padding: 12px 16px 18px; border-top: 1px solid #EEF1F5">
+      <a href="v4-sheet-session.html" style="height: 50px; border-radius: 14px; background: #2268A6; color: #FFFFFF; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; text-decoration: none">Done</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

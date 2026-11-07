@@ -148,7 +148,7 @@ export const SwapIcon = (p: IconProps) => (
   </Svg>
 )
 
-export const CheckIcon = (p: IconProps) => (
+export const CheckIcon = (p: IconProps & { strokeWidth?: number }) => (
   <Svg size={12} strokeWidth={3.2} {...p}>
     <path d="M5 12.5l4.5 4.5L19 7.5" />
   </Svg>
@@ -159,5 +159,57 @@ export const AlertIcon = (p: IconProps) => (
     <circle cx="12" cy="12" r="9" />
     <path d="M12 7.5v5.5" />
     <path d="M12 16.5h.01" />
+  </Svg>
+)
+
+// Two people: managing the saved player list.
+export const UsersIcon = (p: IconProps) => (
+  <Svg size={17} {...p}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M3 20a6 6 0 0 1 12 0" />
+    <circle cx="17" cy="9" r="2.5" />
+    <path d="M15.5 14.5A5 5 0 0 1 21 19" />
+  </Svg>
+)
+
+// Person with a plus: adding or removing people in a session.
+export const UserPlusIcon = (p: IconProps) => (
+  <Svg size={16} strokeWidth={2.2} {...p}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M3 20a6 6 0 0 1 12 0" />
+    <path d="M19 8v6" />
+    <path d="M16 11h6" />
+  </Svg>
+)
+
+// Three bars: game counts.
+export const BarsIcon = (p: IconProps) => (
+  <Svg size={20} strokeWidth={2.2} {...p}>
+    <path d="M5 20V12" />
+    <path d="M12 20V5" />
+    <path d="M19 20v-9" />
+  </Svg>
+)
+
+export const CalendarIcon = (p: IconProps) => (
+  <Svg size={30} {...p}>
+    <rect x="4" y="5" width="16" height="15" rx="2" />
+    <path d="M4 10h16" />
+    <path d="M9 3v4" />
+    <path d="M15 3v4" />
+  </Svg>
+)
+
+export const ClockIcon = (p: IconProps) => (
+  <Svg size={18} strokeWidth={2.2} {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Svg>
+)
+
+export const LockIcon = (p: IconProps) => (
+  <Svg size={10} strokeWidth={2.6} {...p}>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
   </Svg>
 )

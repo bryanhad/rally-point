@@ -1,7 +1,17 @@
 import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { avatarColors, initials } from './avatarStyle'
-import { receiverId, screenRow, serverId, sideOf, TEAM_IDS, type CourtState, type SideKey } from './game'
-import { SwapIcon } from '../../components/ui/icons'
+import {
+  EMPTY_SLOT,
+  hasEmptySlot,
+  receiverId,
+  screenRow,
+  serverId,
+  sideOf,
+  TEAM_IDS,
+  type CourtState,
+  type SideKey,
+} from './game'
+import { PlusIcon, SwapIcon } from '../../components/ui/icons'
 import { Crown, RefereeChair, Shuttle } from './icons'
 import { TEAM_COLORS, type Config, type Player, type TeamId } from './schema'
 
@@ -17,14 +27,19 @@ type CourtProps = {
   crownedTeam?: TeamId
   // Optional row of controls above the court (e.g. mode switch, switch sides/serve).
   top?: ReactNode
+  // Covers the whole court with a dark layer holding this content (e.g. "Pick players").
+  overlay?: ReactNode
 }
 
 type Cell = { team: TeamId; slot: number; id: string }
 type Line = { x1: number; y1: number; x2: number; y2: number }
 
-export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam, top }: CourtProps) {
+export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam, top, overlay }: CourtProps) {
   const server = serverId(court)
   const receiver = receiverId(court)
+  // An empty spot darkens the court so the "Tap to pick" chip is all that stands out.
+  // An overlay covers it all instead.
+  const dimmed = !!onPick && !overlay && hasEmptySlot(court)
 
   // Place each player in a quadrant of the screen.
   const cells = new Map<string, Cell>()
@@ -68,7 +83,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
   return (
     <div className="shrink-0">
       {top && <div className="mb-2">{top}</div>}
-      <div className="rounded-card bg-court p-2.5">
+      <div className="relative rounded-card bg-court p-2.5">
         <div
           ref={courtRef}
           className="relative grid aspect-[342/176] grid-cols-2 grid-rows-2 border-2 border-white bg-court-inner"
@@ -102,7 +117,16 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                   // Chips hug the back of their half so the shuttle never shifts them.
                   className={`relative flex min-w-0 items-center px-1.5 ${half === 'left' ? 'col-start-1 justify-start' : 'col-start-2 justify-end'} ${row === 'top' ? 'row-start-1' : 'row-start-2'}`}
                 >
-                  {cell && (
+                  {cell?.id === EMPTY_SLOT && (
+                    <EmptyChip
+                      raised={dimmed}
+                      half={half}
+                      color={TEAM_COLORS[colors[cell.team]]}
+                      teamName={colors[cell.team]}
+                      onClick={onPick && (() => onPick(cell.team, cell.slot))}
+                    />
+                  )}
+                  {cell && cell.id !== EMPTY_SLOT && (
                     <PlayerChip
                       player={byId.get(cell.id) ?? { name: '?' }}
                       half={half}
@@ -126,6 +150,8 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
               the bottom of the top avatar to the top of the bottom one and the button halfway
               along it. The 44px button is the tap area; the 32px circle is what shows. */}
           {onSwapPartners &&
+            !dimmed &&
+            !overlay &&
             TEAM_IDS.filter((team) => court.teams[team].ids.length === 2).map((team) => {
               const half = sideOf(court, team)
               const [first, second] = court.teams[team].ids.map((id) => byId.get(id)?.name ?? '?')
@@ -160,6 +186,12 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
               )
             })}
         </div>
+        {dimmed && <div aria-hidden className="absolute inset-0 z-[5] rounded-card bg-[rgba(14,18,26,0.62)]" />}
+        {overlay && (
+          <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3 rounded-card bg-[rgba(14,18,26,0.66)] px-5">
+            {overlay}
+          </div>
+        )}
       </div>
       {/* The referee sits at the bottom, at the net, facing the court: this matches what the
           person holding the phone (acting as umpire) sees, so screen left is their left. */}
@@ -201,8 +233,8 @@ function ringColor(color: string, serving: boolean, receiving: boolean) {
 export function PlayerChip({ player, half, color, serving, receiving, crowned, pillRef, onClick }: PlayerChipProps) {
   const { name } = player
   const right = half === 'right'
-  // Saved players show their avatar colour; defaults stay white, since grey looks washed out
-  // against the court.
+  // Players show their avatar colour; old snapshots without one stay white, since grey looks
+  // washed out against the court.
   const avatar = player.color ? avatarColors(player) : { bg: '#FFFFFF', fg: 'var(--color-ink)' }
   return (
     <div className={`relative flex max-w-full min-w-0 items-center ${right ? 'flex-row-reverse' : ''}`}>
@@ -248,5 +280,49 @@ export function PlayerChip({ player, half, color, serving, receiving, crowned, p
       {/* Right after the pill, on the net side. */}
       {serving && <Shuttle className={`shrink-0 ${right ? 'mr-1' : 'ml-1'}`} />}
     </div>
+  )
+}
+
+// An empty spot: a dashed avatar in the team colour with a +, and a dashed "Tap to pick" pill.
+// It sits above the court's dark overlay. Read-only courts show it without the tap.
+function EmptyChip({
+  half,
+  color,
+  teamName,
+  raised,
+  onClick,
+}: {
+  half: SideKey
+  color: string
+  teamName: string
+  // Above the court's dark layer (only when the empty spot is what needs a tap).
+  raised: boolean
+  onClick?: () => void
+}) {
+  const right = half === 'right'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      aria-label={`Empty Team ${teamName.charAt(0).toUpperCase() + teamName.slice(1)} spot. Tap to pick a player`}
+      className={`relative flex max-w-full ${raised ? 'z-[6]' : ''} min-w-0 items-center enabled:active:opacity-80 ${right ? 'flex-row-reverse' : ''}`}
+    >
+      <span
+        aria-hidden
+        className="relative z-[1] flex shrink-0 items-center justify-center rounded-full border-[2.5px] border-dashed border-white text-white"
+        style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, backgroundColor: color }}
+      >
+        <PlusIcon size={20} />
+      </span>
+      <span
+        aria-hidden
+        className={`h-[30px] truncate border-[1.5px] border-dashed border-white/85 bg-white/[0.18] text-[13px] leading-[27px] font-extrabold whitespace-nowrap text-white ${
+          right ? '-mr-3.5 rounded-l-full border-r-0 pr-5 pl-3' : '-ml-3.5 rounded-r-full border-l-0 pr-3 pl-5'
+        }`}
+      >
+        Tap to pick
+      </span>
+    </button>
   )
 }

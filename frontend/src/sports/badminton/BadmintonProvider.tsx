@@ -9,10 +9,13 @@ import {
   GAME_KEY,
   HISTORY_KEY,
   PLAYERS_KEY,
+  SESSION_KEY,
   configSchema,
   defaultConfig,
   defaultGame,
   defaultHistory,
+  defaultSessions,
+  sessionsSchema,
   historySchema,
   playerSchema,
   playersSchema,
@@ -35,12 +38,13 @@ function readLegacyPlayers(): Player[] {
 
 function loadInitial() {
   const game = loadStored(GAME_KEY, storedGameSchema, () => {
-    const { start, log, redoLog, gameNumber } = defaultGame()
-    return { start, log, redoLog, gameNumber }
+    const { start, log, redoLog, gameNumber, awaitingPick } = defaultGame()
+    return { start, log, redoLog, gameNumber, awaitingPick }
   })
   const roster = loadStored(PLAYERS_KEY, playersSchema, () => ({ players: [] }))
   const config = loadStored(CONFIG_KEY, configSchema, defaultConfig)
   const history = loadStored(HISTORY_KEY, historySchema, defaultHistory)
+  const sessions = loadStored(SESSION_KEY, sessionsSchema, defaultSessions)
 
   // Players saved before avatar colours existed get one from their name now, and players saved
   // before colour modes existed parse as auto (playerSchema). The save effect below writes both
@@ -53,12 +57,13 @@ function loadInitial() {
   const reset: ResetKey[] = []
   if (game.status === 'reset') reset.push('game')
   if (roster.status === 'reset') reset.push('players')
+  if (sessions.status === 'reset') reset.push('sessions')
   if (config.status === 'reset') reset.push('config')
   if (history.status === 'reset') reset.push('history')
 
   return {
     // On-court ids missing from the roster fall back to free defaults.
-    game: repairGame({ ...game.value, players }, config.value.mode),
+    game: repairGame({ ...game.value, players, sessions: sessions.value }, config.value.mode),
     config: { ...config.value, teamColors: fixTeamColors(config.value.teamColors) },
     history: history.value,
     reset,
@@ -78,7 +83,7 @@ export function BadmintonProvider({ children }: { children: ReactNode }) {
   const { court, steps } = useMemo(() => replay(game), [game])
 
   // Saving on every change also overwrites unusable data with the fresh state.
-  // The game and roster share one reducer but are saved to separate keys.
+  // The game, roster and sessions share one reducer but are saved to separate keys.
   useEffect(
     () =>
       saveStored(GAME_KEY, {
@@ -86,10 +91,12 @@ export function BadmintonProvider({ children }: { children: ReactNode }) {
         log: game.log,
         redoLog: game.redoLog,
         gameNumber: game.gameNumber,
+        awaitingPick: game.awaitingPick,
       }),
-    [game.start, game.log, game.redoLog, game.gameNumber],
+    [game.start, game.log, game.redoLog, game.gameNumber, game.awaitingPick],
   )
   useEffect(() => saveStored(PLAYERS_KEY, { players: game.players }), [game.players])
+  useEffect(() => saveStored(SESSION_KEY, game.sessions), [game.sessions])
   useEffect(() => saveStored(CONFIG_KEY, config), [config])
   useEffect(() => saveStored(HISTORY_KEY, history), [history])
 

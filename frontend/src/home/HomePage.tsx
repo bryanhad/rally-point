@@ -1,13 +1,14 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { ConfirmDialog } from '../components/ui/Dialog'
 import { FlipDigits } from '../components/ui/FlipDigits'
 import { FrameCell, HeaderBand } from '../components/ui/HeaderBand'
 import { readLastSport } from '../lib/lastSport'
+import { newId } from '../lib/id'
 import { useBadminton } from '../sports/badminton/context'
 import { hasRallies, otherTeam, screenScore } from '../sports/badminton/game'
 import { HistorySheet } from '../sports/badminton/HistorySheet'
-import { BadmintonMark, Rackets } from '../sports/badminton/icons'
+import { NewSessionDialog, type NewSession } from '../sports/badminton/NewSessionDialog'
+import { BadmintonMark } from '../sports/badminton/icons'
 import { TEAM_COLORS, type Config, type HistoryEntry } from '../sports/badminton/schema'
 
 const LABEL = 'text-[13px] font-bold tracking-[0.06em] text-muted'
@@ -19,27 +20,26 @@ export function HomePage() {
   // Read once on arrival: the sport most recently scored decides the in-progress card.
   const [lastSport] = useState(readLastSport)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [pendingMode, setPendingMode] = useState<Config['mode'] | null>(null)
+  // The New session popup, opened by Singles / Doubles with that mode preselected.
+  const [newSession, setNewSession] = useState<Config['mode'] | null>(null)
 
   const ongoing = hasRallies(game)
   const showProgress = lastSport === 'badminton' && ongoing
   const order = [court.leftTeam, otherTeam(court.leftTeam)]
 
-  // Start a fresh badminton game in `mode` (without saving the current one) and open it.
-  function begin(mode: Config['mode']) {
-    if (mode !== config.mode) {
-      setConfig((c) => ({ ...c, mode }))
-      dispatch({ type: 'setMode', mode })
-    } else if (ongoing) {
-      dispatch({ type: 'restart' })
-    }
-    setPendingMode(null)
+  // A match starts with a session: start it (the court waits for this game's players) and open
+  // the scoreboard. A running session is ended inside the popup, after its own confirmation.
+  function startSession({ startedAt, mode, playerIds }: NewSession) {
+    dispatch({ type: 'startSession', id: newId(), startedAt, mode, playerIds })
+    setConfig((c) => ({ ...c, mode }))
+    setNewSession(null)
     navigate({ to: '/sports/badminton' })
   }
 
-  function start(mode: Config['mode']) {
-    if (ongoing) setPendingMode(mode)
-    else begin(mode)
+  function savePlayer(name: string) {
+    const id = newId()
+    dispatch({ type: 'addPlayer', id, name })
+    return id
   }
 
   return (
@@ -105,7 +105,7 @@ export function HomePage() {
                   <button
                     key={mode}
                     type="button"
-                    onClick={() => start(mode)}
+                    onClick={() => setNewSession(mode)}
                     className="h-[46px] rounded-control bg-white text-sm font-extrabold text-court-ink active:opacity-85"
                   >
                     {MODE_NAME[mode]}
@@ -152,21 +152,15 @@ export function HomePage() {
 
       <HistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} />
 
-      <ConfirmDialog
-        open={pendingMode !== null}
-        tone="neutral"
-        icon={<Rackets className="h-6 w-7" />}
-        title="Start a new match?"
-        description={
-          <>
-            There is an ongoing match on <strong className="text-ink">{screenScore(court)}</strong>, do you want to
-            start a new {pendingMode} match?
-          </>
-        }
-        confirmLabel={`Start new ${pendingMode} match`}
-        cancelLabel="Keep current match"
-        onConfirm={() => pendingMode && begin(pendingMode)}
-        onCancel={() => setPendingMode(null)}
+      {/* The popup's form mounts fresh on each opening, so it picks up the mode tapped. */}
+      <NewSessionDialog
+        open={newSession !== null}
+        onClose={() => setNewSession(null)}
+        players={game.players}
+        current={game.sessions.current}
+        mode={newSession ?? config.mode}
+        onCreatePlayer={savePlayer}
+        onStart={startSession}
       />
     </div>
   )

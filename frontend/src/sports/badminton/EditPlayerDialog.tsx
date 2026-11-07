@@ -6,8 +6,8 @@ import { AVATAR_COLORS, avatarColorFor, hueOf, lookFields, lookOf, type PlayerLo
 import { ColourSwatches } from './ColourSwatches'
 import { CustomColourStep } from './CustomColourStep'
 import { useBadminton } from './context'
-import { allPlayers, MAX_NAME_LENGTH, replay, sameName, TEAM_IDS, validateName } from './game'
-import { DEFAULT_PLAYERS, TEAM_COLORS, TEAM_TINTS, type Player } from './schema'
+import { allPlayers, MAX_NAME_LENGTH, sameName, TEAM_IDS, validateName } from './game'
+import { TEAM_COLORS, TEAM_TINTS, type Player } from './schema'
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const sameLook = (a: PlayerLook, b: PlayerLook) =>
@@ -79,15 +79,6 @@ function EditPlayer({ player, titleId, onClose }: { player: Player; titleId: str
     dispatch({ type: 'deletePlayer', id: player.id })
     setConfirming(false)
     onClose()
-  }
-
-  // Who takes the slot if this on-court player is deleted (replay fills it with a free default).
-  function replacementName() {
-    if (!team) return null
-    const slot = court.teams[team].ids.indexOf(player.id)
-    const after = replay({ ...game, players: game.players.filter((p) => p.id !== player.id) }).court
-    const id = after.teams[team].ids[slot]
-    return DEFAULT_PLAYERS.find((p) => p.id === id)?.name ?? 'A default player'
   }
 
   if (step === 'custom') {
@@ -212,8 +203,8 @@ function EditPlayer({ player, titleId, onClose }: { player: Player; titleId: str
         description={
           team ? (
             <>
-              {player.name} is on court for Team {titleCase(config.teamColors[team])}.{' '}
-              <strong className="text-ink">{replacementName()}</strong> will take their place.
+              {player.name} is on court for Team {titleCase(config.teamColors[team])}. Their spot will be empty
+              until you pick someone else.
             </>
           ) : (
             "They'll be removed from your players. Match history keeps their name."

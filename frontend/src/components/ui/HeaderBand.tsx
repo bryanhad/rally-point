@@ -64,13 +64,15 @@ type BandTileProps = {
   'aria-label': string
   // Shown in the white circle on the right (e.g. a pencil or a chevron).
   icon: ReactNode
+  // Extra classes for the icon circle (e.g. hiding it on narrow screens).
+  iconClassName?: string
   className?: string
   children: ReactNode
 }
 
 // Flat tappable tile inside an unframed band: lighter blue, white icon circle on the right,
 // darkens and shrinks slightly while pressed. Pass the gap before the icon in `className`.
-export function BandTile({ onClick, icon, className = '', children, ...rest }: BandTileProps) {
+export function BandTile({ onClick, icon, iconClassName = '', className = '', children, ...rest }: BandTileProps) {
   return (
     <button
       type="button"
@@ -79,7 +81,7 @@ export function BandTile({ onClick, icon, className = '', children, ...rest }: B
       className={`flex h-16 min-w-0 items-center rounded-[14px] bg-band-tile px-2 text-left text-white transition-transform duration-100 active:scale-[0.97] active:bg-band-tile-pressed motion-reduce:transition-none ${className}`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">{children}</div>
-      <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-white text-band">
+      <span className={`flex size-[26px] shrink-0 items-center justify-center rounded-full bg-white text-band ${iconClassName}`}>
         {icon}
       </span>
     </button>

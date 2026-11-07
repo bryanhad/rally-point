@@ -11,7 +11,7 @@ type AvatarProps = {
   style?: CSSProperties
 }
 
-// Round initials badge in the player's saved colour (grey for the default players).
+// Round initials badge in the player's saved colour (grey for old snapshots without one).
 export function Avatar({ player, size = 38, className = '', style }: AvatarProps) {
   const { bg, fg } = avatarColors(player)
   const text = initials(player.name)

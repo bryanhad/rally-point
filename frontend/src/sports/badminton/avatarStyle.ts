@@ -41,7 +41,7 @@ const AUTO_COLORS: readonly AvatarColor[] = ['teal', 'purple', 'pink', 'amber', 
 export const COLOR_MODES = ['auto', 'preset', 'custom'] as const
 export type PlayerLook = { mode: 'auto' } | { mode: 'preset'; presetId: AvatarColor } | { mode: 'custom'; hue: number }
 
-// Default players (P1–P4) are always neutral grey.
+// Neutral grey, for snapshots without a colour (e.g. old history of the removed Player 1–4).
 export const DEFAULT_AVATAR = { bg: '#EEF1F5', fg: '#3A4458' } as const
 
 // The name-based (auto) colour. Picked when a player is created and saved; picked again only

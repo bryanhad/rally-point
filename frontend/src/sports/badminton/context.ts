@@ -17,7 +17,7 @@ export type BadmintonContextValue = {
   dismissResetNotice: () => void
 }
 
-export type ResetKey = 'game' | 'players' | 'config' | 'history'
+export type ResetKey = 'game' | 'players' | 'sessions' | 'config' | 'history'
 
 export const BadmintonContext = createContext<BadmintonContextValue | null>(null)
 

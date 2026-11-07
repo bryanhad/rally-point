@@ -1,7 +1,6 @@
 import { newId } from '../../lib/id'
 import { avatarColorFor, lookFields, type PlayerLook } from './avatarStyle'
 import {
-  DEFAULT_PLAYERS,
   type Config,
   type GameEvent,
   type GameState,
@@ -48,6 +47,15 @@ export type GameAction =
   // Saves the name and colour together (from Edit player).
   | { type: 'editPlayer'; id: string; name: string; look: PlayerLook }
   | { type: 'deletePlayer'; id: string }
+  // Ends the running session (kept in `past`) and starts a new one with an empty court.
+  | { type: 'startSession'; id: string; startedAt: number; mode: Config['mode']; playerIds: string[] }
+  // Who's in the running session (late arrivals, people leaving).
+  | { type: 'setSessionPlayers'; playerIds: string[] }
+  // "Keep current session" on the 12-hour prompt.
+  | { type: 'keepSession'; at: number }
+  // Starts the game that was waiting for its players: with a new lineup (Pick players), or
+  // with the one already on court (Same players).
+  | { type: 'startGame'; lineup?: Record<TeamId, string[]> }
 
 export const MAX_NAME_LENGTH = 24
 
@@ -60,6 +68,8 @@ const KEEPS_REDO: ReadonlySet<GameAction['type']> = new Set([
   'addPlayer',
   'editPlayer',
   'deletePlayer',
+  'setSessionPlayers',
+  'keepSession',
 ])
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -72,6 +82,8 @@ function applyAction(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'rally': {
       const { court } = replay(state)
+      // No scoring until the game's players are picked and every spot has a player.
+      if (state.awaitingPick || hasEmptySlot(court)) return state
       const score = court.teams[action.team].score + 1
       const otherScore = court.teams[otherTeam(action.team)].score
       return append(state, {
@@ -118,10 +130,14 @@ function applyAction(state: GameState, action: GameAction): GameState {
       // Same starting lineup, ends and server; only the log is cleared.
       return { ...state, log: [] }
     case 'newGame':
-      // Only reached after a game is ended and recorded, so this is where the counter moves on.
+      // Only reached after a game is ended and recorded, so this is where the counter moves on
+      // and the game counts for the session.
       return {
         ...newGame(state, state.start.lineup.a.length === 2 ? 'doubles' : 'singles'),
         gameNumber: state.gameNumber + 1,
+        sessions: withFinishedGame(state),
+        // In a session the next game starts with picking its players.
+        awaitingPick: !!state.sessions.current,
       }
     case 'addPlayer': {
       // The form validates first; this guard keeps the reducer safe on its own.
@@ -150,9 +166,56 @@ function applyAction(state: GameState, action: GameAction): GameState {
         ),
       }
     }
-    case 'deletePlayer':
-      // An on-court slot holding this player is filled with a free default during replay.
-      return { ...state, players: state.players.filter((p) => p.id !== action.id) }
+    case 'deletePlayer': {
+      // An on-court slot holding this player becomes empty during replay. They leave the
+      // session too; games they played keep their snapshot.
+      const current = state.sessions.current
+      return {
+        ...state,
+        players: state.players.filter((p) => p.id !== action.id),
+        sessions: current
+          ? { ...state.sessions, current: { ...current, playerIds: current.playerIds.filter((id) => id !== action.id) } }
+          : state.sessions,
+      }
+    }
+    case 'startSession': {
+      const { current, past } = state.sessions
+      const size = action.mode === 'singles' ? 1 : 2
+      const empty = () => Array.from({ length: size }, () => EMPTY_SLOT)
+      return {
+        ...state,
+        start: { lineup: { a: empty(), b: empty() }, server: 'a', leftTeam: state.start.leftTeam },
+        log: [],
+        awaitingPick: true,
+        sessions: {
+          current: {
+            id: action.id,
+            startedAt: action.startedAt,
+            mode: action.mode,
+            playerIds: knownIds(state, action.playerIds),
+            games: [],
+          },
+          past: current ? [current, ...past] : past,
+        },
+      }
+    }
+    case 'startGame': {
+      if (!state.awaitingPick) return state
+      const size = state.start.lineup.a.length
+      const lineup = action.lineup
+      if (lineup && (lineup.a.length !== size || lineup.b.length !== size)) return state
+      return { ...state, start: lineup ? { ...state.start, lineup } : state.start, log: [], awaitingPick: false }
+    }
+    case 'keepSession': {
+      const current = state.sessions.current
+      if (!current) return state
+      return { ...state, sessions: { ...state.sessions, current: { ...current, keptAt: action.at } } }
+    }
+    case 'setSessionPlayers': {
+      const current = state.sessions.current
+      if (!current) return state
+      return { ...state, sessions: { ...state.sessions, current: { ...current, playerIds: knownIds(state, action.playerIds) } } }
+    }
   }
 }
 
@@ -259,6 +322,13 @@ export function canRedo(state: GameState): boolean {
   return state.redoLog !== null && state.redoLog.length > state.log.length
 }
 
+// An empty court slot holds '' (e.g. its player was deleted, or doubles added a spot).
+export const EMPTY_SLOT = ''
+
+export function hasEmptySlot(court: CourtState): boolean {
+  return TEAM_IDS.some((t) => court.teams[t].ids.includes(EMPTY_SLOT))
+}
+
 export function hasRallies(state: GameState): boolean {
   return state.log.some((e) => e.type === 'rally')
 }
@@ -286,7 +356,10 @@ export function describeUndo({ event, before, after }: LogStep, name: NameOf): s
     case 'assignPlayer': {
       const swap = swappedPair(event, before)
       if (swap) return `${name(swap[0])} and ${name(swap[1])} swapped back`
-      return `${name(after.teams[event.team].ids[event.slot])} changed back to ${name(before.teams[event.team].ids[event.slot])}`
+      const was = before.teams[event.team].ids[event.slot]
+      const put = name(after.teams[event.team].ids[event.slot])
+      if (was === EMPTY_SLOT) return `Took ${put} off court`
+      return `${put} changed back to ${name(was)}`
     }
   }
 }
@@ -295,6 +368,7 @@ export function describeUndo({ event, before, after }: LogStep, name: NameOf): s
 // places. Null for a plain replacement.
 function swappedPair(event: Extract<GameEvent, { type: 'assignPlayer' }>, before: CourtState) {
   const onCourt = TEAM_IDS.some((t) => before.teams[t].ids.includes(event.playerId))
+  if (before.teams[event.team].ids[event.slot] === EMPTY_SLOT) return null
   return onCourt ? ([before.teams[event.team].ids[event.slot], event.playerId] as const) : null
 }
 
@@ -312,7 +386,10 @@ export function describeRedo({ event, before, after }: LogStep, name: NameOf): s
     case 'assignPlayer': {
       const swap = swappedPair(event, before)
       if (swap) return `${name(swap[0])} and ${name(swap[1])} swapped again`
-      return `${name(before.teams[event.team].ids[event.slot])} changed to ${name(after.teams[event.team].ids[event.slot])} again`
+      const was = before.teams[event.team].ids[event.slot]
+      const put = name(after.teams[event.team].ids[event.slot])
+      if (was === EMPTY_SLOT) return `Put ${put} back on court`
+      return `${name(was)} changed to ${put} again`
     }
   }
 }
@@ -325,7 +402,7 @@ export function sortByName<T extends Pick<Player, 'name'>>(players: readonly T[]
 }
 
 export function allPlayers(state: GameState): Player[] {
-  return [...DEFAULT_PLAYERS, ...state.players]
+  return state.players
 }
 
 // Returns an error message, or null when the name is acceptable.
@@ -365,6 +442,7 @@ export function createHistoryEntry(
   winner: TeamId | 'draw',
   colors: Config['teamColors'],
   totalPoints: number,
+  sessionId?: string,
 ): HistoryEntry {
   const byId = new Map(players.map((p) => [p.id, p]))
   const side = (team: TeamId) => ({
@@ -380,6 +458,7 @@ export function createHistoryEntry(
     right: side(teamOn(court, 'right')),
     winner: winner === 'draw' ? 'draw' : sideOf(court, winner),
     totalPoints,
+    ...(sessionId ? { sessionId } : {}),
   }
 }
 
@@ -399,6 +478,25 @@ export function repairGame(state: GameState, mode: Config['mode']): GameState {
 
 // --- Internals --------------------------------------------------------------
 
+// Saved players only, each once.
+function knownIds(state: GameState, ids: string[]): string[] {
+  const known = new Set(state.players.map((p) => p.id))
+  return [...new Set(ids)].filter((id) => known.has(id))
+}
+
+// The running session with the game that just ended added (whoever was on court at the end).
+function withFinishedGame(state: GameState): GameState['sessions'] {
+  const current = state.sessions.current
+  if (!current) return state.sessions
+  const { court } = replay(state)
+  const byId = new Map(state.players.map((p) => [p.id, p]))
+  const players = TEAM_IDS.flatMap((t) => court.teams[t].ids)
+    .map((id) => byId.get(id))
+    .filter((p): p is Player => !!p)
+  if (!players.length) return state.sessions
+  return { ...state.sessions, current: { ...current, games: [...current.games, { endedAt: Date.now(), players }] } }
+}
+
 function append(state: GameState, event: GameEvent): GameState {
   return { ...state, log: [...state.log, event] }
 }
@@ -414,17 +512,10 @@ function newGame(state: GameState, mode: Config['mode']): GameState {
   const lineup = { a: [...court.teams.a.ids], b: [...court.teams.b.ids] }
   for (const team of TEAM_IDS) {
     if (mode === 'singles') lineup[team] = lineup[team].slice(0, 1)
-    else if (lineup[team].length === 1) lineup[team].push(freeDefaultId([...lineup.a, ...lineup.b]))
+    // Doubles adds an empty spot to each team, to be picked.
+    else if (lineup[team].length === 1) lineup[team].push(EMPTY_SLOT)
   }
   return { ...state, start: { lineup, server: court.leftTeam, leftTeam: court.leftTeam }, log: [] }
-}
-
-// Lowest-numbered default player not currently on court.
-function freeDefaultId(onCourt: string[]): string {
-  const free = DEFAULT_PLAYERS.find((p) => !onCourt.includes(p.id))
-  // With at most four slots and four defaults, one is always free once a slot is vacated.
-  if (!free) throw new Error('No free default player')
-  return free.id
 }
 
 // Puts a player into a slot. If they were already on court (either team), the two swap: the
@@ -438,29 +529,28 @@ function assignIds(
   const ids = { a: [...lineup.a], b: [...lineup.b] }
   if (slot >= ids[team].length || ids[team][slot] === playerId) return lineup
 
-  const fromTeam = TEAM_IDS.find((t) => ids[t].includes(playerId))
+  const fromTeam = playerId === EMPTY_SLOT ? undefined : TEAM_IDS.find((t) => ids[t].includes(playerId))
   const replaced = ids[team][slot]
   if (fromTeam) ids[fromTeam][ids[fromTeam].indexOf(playerId)] = replaced
   ids[team][slot] = playerId
   return ids
 }
 
-// Ids missing from the roster (or duplicated) are replaced with free defaults,
-// one slot at a time so each pick sees the previous ones.
+// Ids missing from the roster (deleted players, or the old Player 1–4 defaults) or duplicated
+// become empty slots.
 function repairCourt(court: CourtState, known: Set<string>): CourtState {
   const seen = new Set<string>()
+  let changed = false
   const keep = (id: string) => {
-    if (!known.has(id) || seen.has(id)) return ''
-    seen.add(id)
-    return id
+    if (id !== EMPTY_SLOT && known.has(id) && !seen.has(id)) {
+      seen.add(id)
+      return id
+    }
+    if (id !== EMPTY_SLOT) changed = true
+    return EMPTY_SLOT
   }
   const ids = { a: court.teams.a.ids.map(keep), b: court.teams.b.ids.map(keep) }
-  if (![...ids.a, ...ids.b].includes('')) return court
-  for (const team of TEAM_IDS) {
-    ids[team].forEach((id, slot) => {
-      if (!id) ids[team][slot] = freeDefaultId([...ids.a, ...ids.b])
-    })
-  }
+  if (!changed) return court
   return {
     ...court,
     teams: { a: { ...court.teams.a, ids: ids.a }, b: { ...court.teams.b, ids: ids.b } },

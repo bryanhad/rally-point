@@ -8,13 +8,14 @@ export const GAME_KEY = 'rally-point:badminton:game'
 export const PLAYERS_KEY = 'rally-point:badminton:players'
 export const CONFIG_KEY = 'rally-point:badminton:config'
 export const HISTORY_KEY = 'rally-point:badminton:history'
+export const SESSION_KEY = 'rally-point:badminton:session'
 
 export const playerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   // The auto (name-based) colour: picked when the player is created and again only when the
-  // name changes. Missing on defaults (always grey) and on players saved before colours
-  // existed — those get one on load. `.catch` keeps bad colour data from resetting the roster.
+  // name changes. Players saved before colours existed get one on load; only old history
+  // snapshots (e.g. of the removed Player 1–4 defaults) lack it and show grey. Old history snapshots of the removed Player 1–4 have none. `.catch` keeps bad colour data from resetting the roster.
   color: z.enum(AVATAR_COLOR_NAMES).optional().catch(undefined),
   // Which colour shows: auto (`color`), a preset (`presetId`) or a custom hue (`hue`).
   // Players saved before this existed load as auto.
@@ -24,18 +25,12 @@ export const playerSchema = z.object({
 })
 export type Player = z.infer<typeof playerSchema>
 
-// Read-only defaults. Never stored; always available alongside custom players.
-export const DEFAULT_PLAYERS: readonly Player[] = [1, 2, 3, 4].map((n) => ({
-  id: `default-${n}`,
-  name: `Player ${n}`,
-  colorMode: 'auto' as const,
-}))
-
 // Teams keep their identity for the whole game; team A starts on the left of the screen.
 export const teamIdSchema = z.enum(['a', 'b'])
 export type TeamId = z.infer<typeof teamIdSchema>
 
 // Doubles: index 0 stands in the team's right service court, index 1 in the left.
+// '' is an empty spot waiting for a player.
 const lineupIdsSchema = z.array(z.string()).min(1).max(2)
 
 // Everything that changes the flow of a game. State (score, server, positions, ends)
@@ -62,7 +57,7 @@ const gameEventSchema = z.discriminatedUnion('type', [
 export type GameEvent = z.infer<typeof gameEventSchema>
 
 // Stored under GAME_KEY. Player ids missing from the roster are repaired during
-// replay (a free default takes the slot), not treated as invalid.
+// replay (the slot becomes empty), not treated as invalid.
 export const storedGameSchema = z.object({
   start: z.object({
     lineup: z.object({ a: lineupIdsSchema, b: lineupIdsSchema }),
@@ -77,16 +72,52 @@ export const storedGameSchema = z.object({
   redoLog: z.array(gameEventSchema).nullable().default(null),
   // Which game this is: +1 each time a game is ended and recorded (reset and mode change keep it).
   gameNumber: z.number().int().min(1).default(1),
+  // In a session, each game starts with picking its players (or "Same players"); scoring
+  // waits until then.
+  awaitingPick: z.boolean().default(false),
 })
 
-// Stored under PLAYERS_KEY. Custom players only; DEFAULT_PLAYERS are added at runtime.
+// Stored under PLAYERS_KEY.
 export const playersSchema = z.object({
   players: z.array(playerSchema),
 })
 
-// In memory the game and roster live together so one reducer keeps them in sync;
-// they are saved to separate keys.
-export type GameState = z.infer<typeof storedGameSchema> & z.infer<typeof playersSchema>
+export const modeSchema = z.enum(['singles', 'doubles'])
+
+// A finished game in a session: who was on court when it ended. Name/colour snapshots, so a
+// player deleted later still shows (as "Left") with their games.
+const sessionGameSchema = z.object({
+  endedAt: z.number(), // epoch milliseconds
+  players: z.array(playerSchema).min(1).max(4),
+})
+
+// One evening of play: who's here, and the games they've played. Game counts are derived from
+// `games`, not from match history, so clearing history can't wipe them.
+export const sessionSchema = z.object({
+  id: z.string().min(1),
+  startedAt: z.number(), // epoch milliseconds
+  // The mode it started in; the live mode is config.mode and can change during the session.
+  mode: modeSchema,
+  // Who's in the session now. Players who played and were removed are "left".
+  playerIds: z.array(z.string().min(1)),
+  // Oldest first.
+  games: z.array(sessionGameSchema),
+  // Last "Keep current session" on the 12-hour prompt; counts as activity.
+  keptAt: z.number().optional(),
+})
+export type Session = z.infer<typeof sessionSchema>
+
+// Stored under SESSION_KEY. At most one running session; ended ones are kept for a later view.
+export const sessionsSchema = z.object({
+  current: sessionSchema.nullable(),
+  // Newest first.
+  past: z.array(sessionSchema),
+})
+export type Sessions = z.infer<typeof sessionsSchema>
+
+// In memory the game, roster and sessions live together so one reducer keeps them in sync
+// (e.g. ending a game counts it for the session); they are saved to separate keys.
+export type GameState = z.infer<typeof storedGameSchema> & z.infer<typeof playersSchema> & { sessions: Sessions }
 
 // Team colours. Stored by name so a shade can be tweaked here without invalidating saves.
 // No green: it would disappear against the court.
@@ -121,7 +152,7 @@ export const configSchema = z.object({
   sideSwitch: sideSwitchSchema,
   // CSS font-weight of the score digits.
   thickness: z.number().int().min(100).max(900),
-  mode: z.enum(['singles', 'doubles']),
+  mode: modeSchema,
   // Last "every N" value, remembered while the rule is off or at half so it can be shown and reused.
   everyPoints: z.number().int().min(1).default(5),
   // `.catch` makes an unknown colour fall back on its own instead of resetting all settings.
@@ -147,6 +178,8 @@ const historyEntrySchema = z.object({
   winner: z.enum(['left', 'right', 'draw']),
   // Points to win when the game was played. Optional: older records don't have it.
   totalPoints: z.number().int().min(1).optional(),
+  // The session it was played in. Optional: games without a session, and older records.
+  sessionId: z.string().optional(),
 })
 export type HistoryEntry = z.infer<typeof historyEntrySchema>
 
@@ -163,11 +196,18 @@ export function defaultHistory(): History {
 export function defaultGame(): GameState {
   return {
     players: [],
-    start: { lineup: { a: ['default-1'], b: ['default-2'] }, server: 'a', leftTeam: 'a' },
+    // An empty court: players are picked onto it.
+    start: { lineup: { a: [''], b: [''] }, server: 'a', leftTeam: 'a' },
     log: [],
     redoLog: null,
     gameNumber: 1,
+    awaitingPick: false,
+    sessions: defaultSessions(),
   }
+}
+
+export function defaultSessions(): Sessions {
+  return { current: null, past: [] }
 }
 
 export function defaultConfig(): Config {

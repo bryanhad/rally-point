@@ -1,10 +1,11 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { BottomSheet } from '../../components/ui/BottomSheet'
-import { PlusIcon, SearchIcon } from '../../components/ui/icons'
 import { Avatar } from './Avatar'
 import { NewPlayerDialog } from './NewPlayerDialog'
+import { FindPlayerInput, NewPlayerTile, NoMatch } from './PlayerGrid'
+import { filterPlayers, TILE_LG } from './playerList'
 import { sortByName, TEAM_IDS, type CourtState } from './game'
-import { DEFAULT_PLAYERS, TEAM_COLORS, TEAM_TINTS, type Config, type Player, type TeamId } from './schema'
+import { TEAM_COLORS, TEAM_TINTS, type Config, type Player, type TeamId } from './schema'
 
 export type PickerTarget = { team: TeamId; slot: number }
 
@@ -24,13 +25,14 @@ type ChangePlayerSheetProps = {
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 // "Change player": the player being replaced in the header, then everyone else in a fixed
-// order (saved A–Z, then Player 1–4), with the other on-court players tagged.
+// order (A–Z), with the other on-court players tagged.
 export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, onPick, onCreate }: ChangePlayerSheetProps) {
   // Keep showing the last target (and who stood there) while the sheet slides away, so the
   // title doesn't change or blank out mid-animation.
   const currentId = target ? court.teams[target.team].ids[target.slot] : null
   const [shown, setShown] = useState<{ team: TeamId; currentId: string } | null>(null)
-  if (target && currentId && (shown?.team !== target.team || shown.currentId !== currentId)) {
+  // An empty spot has currentId ''.
+  if (target && currentId !== null && (shown?.team !== target.team || shown.currentId !== currentId)) {
     setShown({ team: target.team, currentId })
   }
   // The filter sits in the sheet's fixed subheader, so it lives here; it's cleared each time
@@ -42,7 +44,7 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
     if (target) setQuery('')
   }
 
-  const players = [...sortByName(saved), ...DEFAULT_PLAYERS]
+  const players = sortByName(saved)
   const current = players.find((p) => p.id === shown?.currentId)
   const team = shown?.team ?? 'a'
   const teamName = `Team ${titleCase(teamColors[team])}`
@@ -62,7 +64,7 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
       eyebrow={teamEyebrow}
       title="Change player"
       subtitle={
-        current && (
+        current ? (
           <div className="flex items-center gap-2">
             <span className="shrink-0 text-[13px] font-semibold text-muted">Replacing</span>
             <span className="flex h-[34px] min-w-0 items-center gap-2 rounded-full bg-soft pr-3 pl-[3px]">
@@ -75,20 +77,13 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
               <span className="max-w-[160px] truncate text-[15px] font-extrabold">{current.name}</span>
             </span>
           </div>
+        ) : (
+          <div className="flex h-[34px] items-center text-[13px] font-semibold text-muted">Filling an empty spot</div>
         )
       }
       subheader={
-        <div className="relative px-4 pt-3">
-          <SearchIcon className="pointer-events-none absolute top-[calc(50%+6px)] left-[30px] -translate-y-1/2 text-faint" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a player"
-            aria-label="Find a player"
-            autoComplete="off"
-            className="h-[46px] w-full rounded-[14px] bg-soft pr-3.5 pl-[42px] text-base outline-none placeholder:text-faint focus-visible:ring-2 focus-visible:ring-band"
-          />
+        <div className="px-4 pt-3">
+          <FindPlayerInput value={query} onChange={setQuery} />
         </div>
       }
       fade
@@ -106,9 +101,6 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
   )
 }
 
-// Same height and spacing for every tile, so the 3-column grid stays even.
-const TILE = 'flex min-h-[116px] w-full flex-col items-center justify-start gap-1.5 rounded-2xl px-1 pt-2.5 pb-2'
-
 function PlayerGrid({
   players,
   court,
@@ -125,8 +117,7 @@ function PlayerGrid({
   newPlayer: { eyebrow: ReactNode; currentName: string; onCreate: (name: string, replace: boolean) => void }
 }) {
   const [adding, setAdding] = useState(false)
-  const needle = query.trim().toLowerCase()
-  const shown = needle ? players.filter((p) => p.name.toLowerCase().includes(needle)) : players
+  const shown = filterPlayers(players, query)
   const teamOf = (id: string) => TEAM_IDS.find((t) => court.teams[t].ids.includes(id))
 
   return (
@@ -134,25 +125,18 @@ function PlayerGrid({
       <ul className="grid grid-cols-3 gap-x-2 gap-y-1.5">
         {/* Always first, also while filtering (the filter text becomes the starting name). */}
         <li className="min-w-0">
-          <button type="button" onClick={() => setAdding(true)} className={`${TILE} text-band-ink active:bg-soft`}>
-            <span className="flex size-[60px] items-center justify-center rounded-full border-2 border-dashed border-[#9DB8D4]">
-              <PlusIcon size={22} />
-            </span>
-            <span className="text-sm font-bold">New player</span>
-            <span className="h-[18px]" />
-          </button>
+          <NewPlayerTile onClick={() => setAdding(true)} />
         </li>
         {shown.map((player) => {
           const team = teamOf(player.id)
           const teamColor = team ? teamColors[team] : null
-          const isDefault = !player.color
           return (
             <li key={player.id} className="min-w-0">
               <button
                 type="button"
                 onClick={() => onPick(player.id)}
                 aria-label={teamColor ? `${player.name}, on court for Team ${titleCase(teamColor)}` : undefined}
-                className={`${TILE} active:bg-soft`}
+                className={`${TILE_LG} active:bg-soft`}
               >
                 <span
                   className="flex rounded-full"
@@ -161,7 +145,7 @@ function PlayerGrid({
                   <Avatar player={player} size={60} />
                 </span>
                 <span
-                  className={`max-w-full truncate text-sm ${isDefault ? 'font-semibold text-ink-2' : 'font-bold text-ink'}`}
+                  className="max-w-full truncate text-sm font-bold text-ink"
                 >
                   {player.name}
                 </span>
@@ -179,7 +163,7 @@ function PlayerGrid({
         })}
       </ul>
       {shown.length === 0 && (
-        <p className="px-1 py-4 text-center text-sm text-muted">No players match “{query.trim()}”</p>
+        <NoMatch query={query} />
       )}
 
       <NewPlayerDialog
@@ -188,7 +172,7 @@ function PlayerGrid({
         players={players}
         initialName={query.trim()}
         eyebrow={newPlayer.eyebrow}
-        primaryLabel={`Add & replace ${newPlayer.currentName}`}
+        primaryLabel={newPlayer.currentName ? `Add & replace ${newPlayer.currentName}` : 'Add & put on court'}
         onPrimary={(name) => {
           setAdding(false)
           newPlayer.onCreate(name, true)
