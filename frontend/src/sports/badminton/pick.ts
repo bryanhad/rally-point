@@ -49,16 +49,11 @@ export function pickReducer(s: PickState, action: PickAction, order: SlotRef[]):
       slots[action.at.team][action.at.slot] = EMPTY_SLOT
       return { slots, active: action.at }
     case 'tapPlayer': {
-      const { team, slot } = s.active
-      const inActive = slots[team][slot]
-      // Rule 5: the player already in the active slot: nothing to do.
-      if (inActive === action.id) return s
-      const from = findPlayer(s, action.id)
-      if (from) {
-        // Rule 4: a placed player swaps with the active slot's player, or moves into it if empty.
-        slots[from.team][from.slot] = inActive
-      }
+      // Rule 4: a player who's already picked (in any slot) does nothing. To change a pick,
+      // tap its slot then another player, or × it. (Swapping from the list confused people.)
+      if (findPlayer(s, action.id)) return s
       // Rule 3: an unpicked player fills (or replaces) the active slot.
+      const { team, slot } = s.active
       slots[team][slot] = action.id
       // Rule 7.
       return nextActive({ slots, active: s.active }, order)

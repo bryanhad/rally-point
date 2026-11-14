@@ -111,7 +111,7 @@ function PickForm({
                 : [el],
             )}
           </div>
-          <p className="text-center text-xs text-muted">Tap a slot to choose who goes there · tap a picked player to swap</p>
+          <p className="text-center text-xs text-muted">Tap a slot, then a player to put them there</p>
         </div>
       </div>
 
@@ -129,9 +129,11 @@ function PickForm({
               <li key={row.player.id} className="mt-1 first:mt-0">
                 <button
                   type="button"
-                  onClick={() => dispatch({ type: 'tapPlayer', id: row.player.id })}
+                  // Picked players are changed from the slots above, not from here.
+                  onClick={at ? undefined : () => dispatch({ type: 'tapPlayer', id: row.player.id })}
+                  aria-disabled={at ? true : undefined}
                   aria-label={`${row.player.name}, ${plural(row.games, 'game')}${at ? `, on ${teamName(at.team)}` : ''}`}
-                  className="flex w-full items-center gap-3 rounded-[14px] px-2.5 py-2 text-left active:opacity-80"
+                  className={`flex w-full items-center gap-3 rounded-[14px] px-2.5 py-2 text-left ${at ? 'cursor-default' : 'active:opacity-80'}`}
                   style={{ backgroundColor: color ? `color-mix(in srgb, ${TEAM_TINTS[color].bg} 65%, white)` : undefined }}
                 >
                   <Avatar player={row.player} size={38} />
