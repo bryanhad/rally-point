@@ -33,7 +33,15 @@ export function PickPlayersDialog({ open, onClose, session, ...rest }: PickPlaye
   const [shown, setShown] = useState(session)
   if (session && session !== shown) setShown(session)
   return (
-    <DialogShell open={open} onDismiss={onClose} labelledBy={titleId} className="h-full max-h-[880px] overflow-hidden">
+    <DialogShell
+      open={open}
+      onDismiss={onClose}
+      labelledBy={titleId}
+      width="max-w-sm tablet-portrait:max-w-[600px] tablet-landscape:max-w-[560px]"
+      // Fills the height and the list scrolls inside; capped on phones, uncapped on tablets
+      // (24px margins).
+      className="h-full max-h-[880px] overflow-hidden tablet:max-h-none"
+    >
       {/* Remounted on every opening (the shell unmounts when closed), so the slots start empty. */}
       {shown && <PickForm {...rest} session={shown} titleId={titleId} onClose={onClose} />}
     </DialogShell>

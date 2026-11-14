@@ -25,7 +25,7 @@ export function EditPlayerDialog({ player, onClose }: { player: Player | null; o
 
   return (
     // The shell unmounts its content once closed, so each opening starts a fresh draft.
-    <DialogShell open={player !== null} onDismiss={onClose} labelledBy={titleId} className="max-h-full overflow-y-auto">
+    <DialogShell open={player !== null} onDismiss={onClose} labelledBy={titleId} width="max-w-sm tablet:max-w-[480px]" className="max-h-full overflow-y-auto">
       {shown && <EditPlayer key={shown.id} player={shown} titleId={titleId} onClose={onClose} />}
     </DialogShell>
   )

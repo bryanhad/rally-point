@@ -31,17 +31,26 @@ export function usePresence(open: boolean, durationMs: number) {
   return { mounted: open || present, shown: open && shown }
 }
 
-export function usePrefersReducedMotion() {
-  const query = '(prefers-reduced-motion: reduce)'
-  const [reduced, setReduced] = useState(() => window.matchMedia(query).matches)
+// Whether a CSS media query matches, kept live (resize, rotation, system settings).
+export function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
   useEffect(() => {
     const mq = window.matchMedia(query)
-    const onChange = () => setReduced(mq.matches)
+    const onChange = () => setMatches(mq.matches)
+    onChange()
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return reduced
+  }, [query])
+  return matches
 }
+
+export function usePrefersReducedMotion() {
+  return useMediaQuery('(prefers-reduced-motion: reduce)')
+}
+
+// The tablet-landscape layout, where bottom sheets become side sheets. Must match the
+// `tablet-landscape` custom variant in theme.css (CSS can't share values with TypeScript).
+export const TABLET_LANDSCAPE = '(width >= 1024px) and (height >= 600px)'
 
 // Background scroll lock shared by stacked overlays (a dialog over a sheet): only the last
 // one to close restores scrolling. The app scrolls inside <main>, so lock that too.

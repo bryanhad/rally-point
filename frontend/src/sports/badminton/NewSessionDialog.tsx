@@ -30,7 +30,7 @@ type NewSessionDialogProps = {
 export function NewSessionDialog({ open, onClose, ...rest }: NewSessionDialogProps) {
   const titleId = useId()
   return (
-    <DialogShell open={open} onDismiss={onClose} labelledBy={titleId} className="max-h-full overflow-hidden">
+    <DialogShell open={open} onDismiss={onClose} labelledBy={titleId} width="max-w-sm tablet:max-w-[560px]" className="max-h-full overflow-hidden">
       {/* The shell unmounts its content once closed, so each opening starts a fresh draft. */}
       <NewSessionForm {...rest} titleId={titleId} onClose={onClose} />
     </DialogShell>

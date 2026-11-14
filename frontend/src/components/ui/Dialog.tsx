@@ -41,12 +41,19 @@ type DialogShellProps = {
   initialFocus?: RefObject<HTMLElement | null>
   // Layout of the card's content (padding, gap, alignment); the frame itself is fixed.
   className?: string
+  // Width classes for the card. Default: max-w-sm on phones, 440px on tablets (confirmations
+  // and prompts). Bigger dialogs pass their own (480px forms, 520-600px grids and lists).
+  width?: string
+  // Backdrop colour (default --overlay-dialog).
+  backdrop?: string
   children: ReactNode
 }
 
-// The frame every dialog shares: a white card centred over a darker second overlay (z-60, so
-// it stacks above an open bottom sheet), with fade/scale animation, scroll lock, Escape and
-// focus handling. Content and layout come from the caller.
+// The frame every dialog shares: a white card centred over its own overlay, with fade/scale
+// animation, scroll lock, Escape and focus handling. Content and layout come from the caller.
+// Sheets and dialogs share one z-index, so whichever opened last is on top (each portal is
+// appended to <body> when it opens): a dialog over a sheet gets a darker second overlay, and a
+// sheet opened from a dialog (e.g. Change player from the Court preview) covers it.
 export function DialogShell({
   open,
   onDismiss,
@@ -55,6 +62,8 @@ export function DialogShell({
   describedBy,
   initialFocus,
   className = '',
+  width = 'max-w-sm tablet:max-w-[440px]',
+  backdrop = 'var(--overlay-dialog)',
   children,
 }: DialogShellProps) {
   const { mounted, shown } = usePresence(open, DURATION)
@@ -67,12 +76,13 @@ export function DialogShell({
   const visible = shown && open
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    // 24px from the screen edges on tablets (16px on phones).
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 tablet:p-6">
       <div
         aria-hidden
         onClick={onDismiss}
-        className="absolute inset-0 bg-[var(--overlay-dialog)]"
-        style={{ opacity: visible ? 1 : 0, transition: `opacity ${DURATION}ms ease-out` }}
+        className="absolute inset-0"
+        style={{ backgroundColor: backdrop, opacity: visible ? 1 : 0, transition: `opacity ${DURATION}ms ease-out` }}
       />
       <div
         ref={cardRef}
@@ -81,7 +91,7 @@ export function DialogShell({
         aria-labelledby={labelledBy}
         aria-describedby={describedBy}
         tabIndex={-1}
-        className={`relative flex w-full max-w-sm flex-col rounded-dialog bg-white shadow-[0_20px_50px_rgba(14,18,26,0.3)] outline-none ${className}`}
+        className={`relative flex w-full ${width} flex-col rounded-dialog bg-white shadow-[0_20px_50px_rgba(14,18,26,0.3)] outline-none ${className}`}
         style={{
           opacity: visible ? 1 : 0,
           transform: reduced || visible ? 'none' : 'scale(0.96)',

@@ -41,7 +41,8 @@ export function ConfigPage() {
         </FrameCell>
       </HeaderBand>
 
-      <div className="flex flex-col gap-3 px-3 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+      {/* Not designed for tablets: a centred column there instead of stretching. */}
+      <div className="flex flex-col gap-3 px-3 pt-4 pb-6 tablet:mx-auto tablet:w-full tablet:max-w-160 tablet:px-6">
         <Card>
           <SectionLabel>Score thickness</SectionLabel>
           <div className="flex h-24 gap-2">

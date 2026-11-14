@@ -26,8 +26,15 @@ export function GameCountsDialog({ open, onClose, session, players }: GameCounts
   const rows = shown ? gameCounts(shown, players) : []
 
   return (
-    <DialogShell open={open} onDismiss={onClose} labelledBy={titleId} className="max-h-full overflow-hidden">
-      <div className="flex min-h-0 flex-col">
+    <DialogShell
+      open={open}
+      onDismiss={onClose}
+      labelledBy={titleId}
+      width="max-w-sm tablet:max-w-[520px]"
+      // Tablet: a long list, so the card fills the height (24px margins) and the list scrolls inside.
+      className="max-h-full overflow-hidden tablet:h-full"
+    >
+      <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center justify-between pt-3.5 pr-3 pl-5">
           <div className="flex flex-col gap-0.5">
             <div className="text-[11px] font-extrabold tracking-[0.22em] text-muted">

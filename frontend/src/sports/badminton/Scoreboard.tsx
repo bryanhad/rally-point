@@ -1,32 +1,11 @@
-import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { newId } from '../../lib/id'
 import { writeLastSport } from '../../lib/lastSport'
 import { ConfirmDialog, Dialog, DialogButton } from '../../components/ui/Dialog'
-import { digits } from '../../components/ui/digits'
-import { FlipDigits } from '../../components/ui/FlipDigits'
-import { BandTile, HeaderBand } from '../../components/ui/HeaderBand'
-import {
-  AlertIcon,
-  BackIcon,
-  ClockIcon,
-  ChevronRightIcon,
-  PlusIcon,
-  UserPlusIcon,
-  EditIcon,
-  FlagIcon,
-  GearIcon,
-  RedoIcon,
-  ResetIcon,
-  SwapIcon,
-  TrophyIcon,
-  UndoIcon,
-} from '../../components/ui/icons'
-import { Button } from '../../components/ui/primitives'
+import { ClockIcon, FlagIcon, ResetIcon, UserPlusIcon } from '../../components/ui/icons'
 import { Avatar } from './Avatar'
 import { useBadminton } from './context'
-import { Court } from './Court'
 import {
   allPlayers,
   canRedo,
@@ -38,47 +17,36 @@ import {
   hasRallies,
   otherTeam,
   replay,
-  screenScore,
   shouldSwitchSides,
   sortByName,
   TEAM_IDS,
   teamOn,
   type RallyStep,
-  type SideKey,
 } from './game'
 import { ChangePlayerSheet, type PickerTarget } from './ChangePlayerSheet'
+import { CourtPreviewDialog } from './CourtPreviewDialog'
 import { GamePointDialog, GameWonDialog } from './GameEndDialogs'
 import { GameRulesSheet } from './GameRulesSheet'
 import { HistorySheet } from './HistorySheet'
 import { ManagePlayersSheet } from './ManagePlayersSheet'
 import { RallySheet } from './RallySheet'
-import { dayLabel, isIdle, nextGameNumber, sessionDateLabel, timeLabel } from './session'
+import { isIdle, nextGameNumber, sessionDateLabel } from './session'
 import { PickPlayersDialog } from './PickPlayersDialog'
 import { MIN_PLAYERS } from './playerList'
 import { SessionSheet } from './SessionSheet'
 import { NewSessionDialog } from './NewSessionDialog'
 import { SessionPlayersDialog } from './SessionPlayersDialog'
 import { GameCountsDialog } from './GameCountsDialog'
-import { Racket, Rackets, ServerIcon, SidesIcon } from './icons'
-import { initials } from './avatarStyle'
-import {
-  TEAM_COLORS,
-  type Config,
-  type HistoryEntry,
-  type Player,
-  type Session,
-  type SideSwitch,
-  type TeamId,
-} from './schema'
+import { Racket, Rackets } from './icons'
+import { type Config, type HistoryEntry, type Player, type TeamId } from './schema'
+import type { ScoreboardView } from './scoreboardView'
+import { ScoreboardPhone } from './ScoreboardPhone'
+import { ScoreboardTablet } from './ScoreboardTablet'
 
-const SIDES: SideKey[] = ['left', 'right']
-
-
-// Score after a rally in screen order after it, so a rally that switched ends shows the new order.
-const scoreAfter = ({ after }: RallyStep) => screenScore(after)
-
+// The scoreboard page: owns the game handlers and every sheet/dialog, and renders the phone or
+// tablet layout with them.
 export function Scoreboard() {
-  const { game, court, steps, dispatch, config, setConfig, addHistoryEntry } = useBadminton()
+  const { game, court, steps, dispatch, config, setConfig, addHistoryEntry, history } = useBadminton()
 
   // Tracked by team because an automatic change of ends on the same point may move
   // them to the other side of the screen.
@@ -92,6 +60,8 @@ export function Scoreboard() {
   const [rallyOpen, setRallyOpen] = useState(false)
   const [confirm, setConfirm] = useState<'end' | 'reset' | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
+  // Tablet: the Court preview card.
+  const [courtOpen, setCourtOpen] = useState(false)
   const [playersOpen, setPlayersOpen] = useState(false)
   const [sessionOpen, setSessionOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
@@ -253,204 +223,66 @@ export function Scoreboard() {
     .map((step, i) => ({ step, number: i + 1 }))
   const rallies = [...chronological].reverse()
 
-  const colorName = (team: TeamId) => {
-    const name = config.teamColors[team]
-    return name.charAt(0).toUpperCase() + name.slice(1)
+  const view: ScoreboardView = {
+    court,
+    byId,
+    config,
+    session,
+    players: game.players,
+    started,
+    pickPending,
+    blocked,
+    emptySpot,
+    reachedTotal,
+    canUndo: !blocked && game.log.length > 0,
+    canRedo: !blocked && canRedo(game),
+    sameLineup,
+    gameNumber: session ? nextGameNumber(session) : null,
+    lastResult: (() => {
+      // History is newest first, so this is the session's last finished game.
+      const entry = session && history.entries.find((e) => e.sessionId === session.id)
+      return session && entry ? { gameNumber: session.games.length, entry } : null
+    })(),
+    rallies,
+    onRally: rally,
+    onUndo: undo,
+    onRedo: redo,
+    onReset: () => setConfirm('reset'),
+    onEnd: () => setConfirm('end'),
+    onMode: requestMode,
+    onSides: () => {
+      dispatch({ type: 'swapEnds', at: Date.now() })
+      toast('Players switched sides')
+    },
+    onServer: () => {
+      dispatch({ type: 'switchServer' })
+      toast('Serve switched to the other side')
+    },
+    onPick: (team, slot) => setPicker({ team, slot }),
+    // Only before the first rally; Court hides it for singles.
+    onSwapPartners: started ? undefined : (team) => dispatch({ type: 'swapPartners', team, at: Date.now() }),
+    onOpenSession: () => setSessionOpen(true),
+    onOpenRules: () => setRulesOpen(true),
+    onOpenCourt: () => setCourtOpen(true),
+    onOpenRally: (number) => {
+      setRallyNumber(number)
+      setRallyOpen(true)
+    },
+    onOpenHistory: () => setHistoryOpen(true),
+    onNewSession: () => setNewSessionOpen(true),
+    onPickPlayers: () => setPickOpen(true),
+    onSamePlayers: () => dispatch({ type: 'startGame' }),
   }
-  const teamInitials = (team: TeamId) =>
-    court.teams[team].ids.map((id) => (id === EMPTY_SLOT ? '?' : initials(nameOf(id)))).join(' · ')
-  const newestRally = rallies[0]?.number
 
   return (
-    <div className="flex flex-1 flex-col">
-      <HeaderBand
-        title="BADMINTON"
-        framed={false}
-        left={
-          <Link to="/" aria-label="Back to home" className={BAND_ICON_LINK}>
-            <BackIcon />
-          </Link>
-        }
-        right={
-          <Link to="/sports/badminton/config" aria-label="Badminton settings" className={BAND_ICON_LINK}>
-            <GearIcon />
-          </Link>
-        }
-      >
-        <SessionTile session={session} players={game.players} onClick={() => setSessionOpen(true)} />
-        <BandTile
-          className="shrink-0 gap-2.5"
-          onClick={() => setRulesOpen(true)}
-          aria-label={`Game rules: ${config.totalPoints} points to win, ${swapRuleLabel(config.sideSwitch)}. Edit`}
-          icon={<EditIcon size={13} />}
-        >
-          <FlipDigits tiles={digits(config.totalPoints)} size="xs" />
-          <div className="flex min-w-0 flex-col gap-[5px]">
-            <div className={TILE_CAPTION}>POINTS TO WIN</div>
-            <AutoSwapStatus sideSwitch={config.sideSwitch} />
-          </div>
-        </BandTile>
-      </HeaderBand>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Both layouts are rendered and CSS shows the one for this screen (see the tablet
+          variants in theme.css). The state and every sheet/dialog below live here, outside
+          both, so rotating a tablet keeps open sheets and everything else as it was. */}
+      <ScoreboardPhone v={view} className="flex tablet:hidden" />
+      <ScoreboardTablet v={view} className="hidden tablet:flex" />
 
-      <div className="flex flex-1 flex-col px-3 pt-2.5 pb-[max(12px,env(safe-area-inset-bottom))]">
-        {/* Court layout controls: match type on the left, side/serve swaps on the right */}
-        <div className="mb-2 flex h-11 shrink-0 items-center justify-between">
-          <div role="group" aria-label="Match type" className="flex h-11 rounded-control bg-soft p-[3px]">
-            {(['singles', 'doubles'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => requestMode(mode)}
-                aria-label={mode === 'singles' ? 'Singles' : 'Doubles'}
-                aria-pressed={config.mode === mode}
-                className={`flex w-12 items-center justify-center rounded-[9px] ${config.mode === mode ? 'bg-white text-ink shadow-[0_1px_3px_rgba(20,26,38,0.15)]' : 'text-muted'}`}
-              >
-                {mode === 'singles' ? <Racket /> : <Rackets />}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            <Button
-              aria-label="Swap player sides"
-              icon={<SidesIcon />}
-              label="Sides"
-              onClick={() => {
-                dispatch({ type: 'swapEnds', at: Date.now() })
-                toast('Players switched sides')
-              }}
-            />
-            <Button
-              aria-label="Swap server side"
-              icon={<ServerIcon />}
-              label="Server"
-              disabled={started}
-              onClick={() => {
-                dispatch({ type: 'switchServer' })
-                toast('Serve switched to the other side')
-              }}
-            />
-          </div>
-        </div>
-
-        <Court
-          court={court}
-          byId={byId}
-          colors={config.teamColors}
-          onPick={(team, slot) => setPicker({ team, slot })}
-          // Only before the first rally; Court hides it for singles.
-          onSwapPartners={started ? undefined : (team) => dispatch({ type: 'swapPartners', team, at: Date.now() })}
-          overlay={
-            !session ? (
-              <NoSessionOverlay onStart={() => setNewSessionOpen(true)} />
-            ) : pickPending ? (
-              <PickOverlay
-                gameNumber={nextGameNumber(session)}
-                same={sameLineup}
-                onPick={() => setPickOpen(true)}
-                onSame={() => dispatch({ type: 'startGame' })}
-              />
-            ) : undefined
-          }
-        />
-
-        {/* Game actions: history controls on the left, reset/end on the right */}
-        <div className="mb-2 flex shrink-0 items-center justify-between">
-          <div className="flex gap-1.5">
-            <Button icon={<UndoIcon />} label="Undo" onClick={undo} disabled={blocked || game.log.length === 0} />
-            <Button aria-label="Redo" icon={<RedoIcon />} onClick={redo} disabled={blocked || !canRedo(game)} />
-          </div>
-          <div className="flex gap-1.5">
-            <Button
-              aria-label="Reset game"
-              icon={<ResetIcon />}
-              onClick={() => setConfirm('reset')}
-              disabled={blocked || game.log.length === 0}
-            />
-            {/* Only once a team has reached the total (e.g. after choosing Keep playing). */}
-            <button
-              type="button"
-              onClick={() => setConfirm('end')}
-              disabled={blocked || !reachedTotal || emptySpot}
-              title={reachedTotal ? undefined : `Available once a team reaches ${config.totalPoints}`}
-              className="flex h-11 items-center gap-1.5 rounded-control bg-ink px-3 text-[13px] font-bold text-white active:opacity-75 disabled:border-[1.5px] disabled:border-dashed disabled:border-line-strong disabled:bg-white disabled:text-faint"
-            >
-              <FlagIcon />
-              End game
-            </button>
-          </div>
-        </div>
-
-        {!blocked && emptySpot && (
-          <p className="-mt-0.5 mb-1.5 flex h-[22px] shrink-0 items-center justify-center gap-1.5 text-xs font-bold text-muted">
-            <AlertIcon size={14} />
-            Fill every spot on the court to keep scoring
-          </p>
-        )}
-
-        {/* Scores: tapping a side records a rally won by the team on that side */}
-        <div className="flex min-h-20 flex-1 gap-2.5">
-          {SIDES.map((side) => {
-            const team = teamOn(court, side)
-            return (
-              <button
-                key={side}
-                type="button"
-                onClick={() => rally(team)}
-                // Without a session the tap opens New session instead.
-                disabled={session !== null && (pickPending || emptySpot)}
-                aria-label={`Point to Team ${colorName(team)}`}
-                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[22px] text-white select-none enabled:active:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ backgroundColor: TEAM_COLORS[config.teamColors[team]], containerType: 'size' }}
-              >
-                <span
-                  className="text-[min(52cqh,44cqw)] leading-none tabular-nums"
-                  style={{ fontWeight: config.thickness }}
-                >
-                  {court.teams[team].score}
-                </span>
-                <span className="text-xs font-bold tracking-[0.14em] opacity-90">{teamInitials(team)}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Rallies strip (newest on the left); match history opens in a sheet */}
-        <div className="mt-1.5 flex shrink-0 flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-bold tracking-[0.06em] text-muted">RALLIES</h2>
-            <Button
-              tone="ghost"
-              className="px-2 text-band-ink"
-              icon={<TrophyIcon />}
-              label="Match history"
-              onClick={() => setHistoryOpen(true)}
-            />
-          </div>
-          {rallies.length > 0 ? (
-            <div className="scrollbar-always flex gap-1.5 overflow-x-auto p-1 pb-1.5">
-              {rallies.map(({ step, number }) => (
-                <button
-                  key={number}
-                  type="button"
-                  onClick={() => {
-                    setRallyNumber(number)
-                    setRallyOpen(true)
-                  }}
-                  aria-label={`Rally ${number}: ${scoreAfter(step)}`}
-                  className={`flex h-8 shrink-0 items-center rounded-[9px] px-3 text-sm font-extrabold text-white tabular-nums active:opacity-80 ${
-                    number === newestRally ? 'shadow-[0_0_0_2px_#fff,0_0_0_4px_var(--color-ink)]' : ''
-                  }`}
-                  style={{ backgroundColor: TEAM_COLORS[config.teamColors[step.event.winner]] }}
-                >
-                  {scoreAfter(step)}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="flex h-10 items-center text-sm text-faint">Tap a team's score to log the first rally</p>
-          )}
-        </div>
-      </div>
+      <CourtPreviewDialog open={courtOpen} onClose={() => setCourtOpen(false)} v={view} />
 
       <GamePointDialog
         team={matchPointTeam}
@@ -684,152 +516,6 @@ export function Scoreboard() {
       />
       <ManagePlayersSheet open={playersOpen} onClose={() => setPlayersOpen(false)} />
 
-    </div>
-  )
-}
-
-const BAND_ICON_LINK = 'flex size-11 items-center justify-center rounded-control text-white active:bg-white/15'
-
-const TILE_CAPTION = 'truncate text-[10px] leading-none font-bold tracking-[0.2em] opacity-85 max-[389px]:tracking-[0.12em]'
-
-// Court overlay with no session running: play starts with a session.
-function NoSessionOverlay({ onStart }: { onStart: () => void }) {
-  return (
-    <>
-      <div className="text-[11px] font-extrabold tracking-[0.22em] text-white/80">NO SESSION</div>
-      <button
-        type="button"
-        onClick={onStart}
-        className="flex h-12 items-center gap-2 rounded-[14px] bg-white px-[22px] text-[15px] font-extrabold text-band-ink active:opacity-85"
-      >
-        <PlusIcon size={18} />
-        Start a session
-      </button>
-    </>
-  )
-}
-
-// Court overlay before each game of a session: pick its players, or keep last game's.
-function PickOverlay({
-  gameNumber,
-  same,
-  onPick,
-  onSame,
-}: {
-  gameNumber: number
-  same: Player[] | null
-  onPick: () => void
-  onSame: () => void
-}) {
-  return (
-    <>
-      <div className="text-[11px] font-extrabold tracking-[0.22em] text-white/80">NEXT UP · GAME {gameNumber}</div>
-      <button
-        type="button"
-        onClick={onPick}
-        className="flex h-12 items-center gap-2 rounded-[14px] bg-white px-[22px] text-[15px] font-extrabold text-band-ink active:opacity-85"
-      >
-        <UserPlusIcon size={18} />
-        Pick players
-      </button>
-      {same && (
-        <button
-          type="button"
-          onClick={onSame}
-          aria-label={`Same players: ${same.map((p) => p.name).join(', ')}`}
-          className="flex h-10 items-center gap-2 rounded-control border-[1.5px] border-white/55 pr-3.5 pl-2 text-[13px] font-bold text-white active:bg-white/10"
-        >
-          <span className="flex" aria-hidden>
-            {same.map((p, i) => (
-              <Avatar key={p.id} player={p} size={22} className={`border-2 border-[#3A3F49] ${i > 0 ? '-ml-[9px]' : ''}`} />
-            ))}
-          </span>
-          Same players
-        </button>
-      )}
-    </>
-  )
-}
-
-// "today", "yesterday", "3 days ago", "12 Nov": the day label, read aloud.
-function spokenDay(at: number) {
-  const label = dayLabel(at)
-  if (label === 'Today' || label === 'Yesterday') return label.toLowerCase()
-  return label.replace(/^(\d)d ago$/, '$1 days ago')
-}
-
-// Left band tile: when the session started and who's in it, or a prompt to start one. Opens
-// the Session sheet either way.
-function SessionTile({ session, players, onClick }: { session: Session | null; players: Player[]; onClick: () => void }) {
-  if (!session) {
-    return (
-      <BandTile
-        className="flex-1 gap-1.5 pr-2 pl-3"
-        onClick={onClick}
-        aria-label="No session. Start a session"
-        icon={<PlusIcon size={13} />}
-        iconClassName="max-[389px]:hidden"
-      >
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="truncate text-[13px] font-extrabold opacity-85">No session</div>
-          <span className="flex h-[22px] items-center self-start rounded-full bg-white px-2.5 text-xs font-extrabold text-band-ink">
-            Start
-          </span>
-        </div>
-      </BandTile>
-    )
-  }
-  const inSession = sortByName(players.filter((p) => session.playerIds.includes(p.id)))
-  const extra = inSession.length - 3
-  const count = `${inSession.length} ${inSession.length === 1 ? 'player' : 'players'}`
-  return (
-    <BandTile
-      className="flex-1 gap-1.5 pr-2 pl-3"
-      onClick={onClick}
-      aria-label={`Session: ${spokenDay(session.startedAt)} at ${timeLabel(session.startedAt)}, ${count}. Open session`}
-      icon={<ChevronRightIcon size={13} />}
-      // Below 390px the tile is too narrow for the chevron next to the avatars.
-      iconClassName="max-[389px]:hidden"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        {/* Day only; the time is in the Session sheet (the tile has no room for both). */}
-        <div className="truncate text-[13px] font-extrabold">{dayLabel(session.startedAt)}</div>
-        {/* Fixed-size avatars overlapping by half: later ones may cover earlier initials, but
-            they never squash. */}
-        <div className="flex min-w-0 items-center overflow-hidden" aria-hidden>
-          {inSession.slice(0, 3).map((p, i) => (
-            <Avatar key={p.id} player={p} size={24} className={`border-2 border-band-tile ${i > 0 ? '-ml-3' : ''}`} />
-          ))}
-          {extra > 0 && <span className="ml-1.5 shrink-0 text-[13px] font-extrabold whitespace-nowrap">+{extra}</span>}
-        </div>
-      </div>
-    </BandTile>
-  )
-}
-
-// Rule in words, for the tile's accessible name.
-function swapRuleLabel(sideSwitch: SideSwitch) {
-  if (sideSwitch.kind === 'off') return 'auto swap sides off'
-  if (sideSwitch.kind === 'half') return 'swap sides at half'
-  return `swap sides every ${sideSwitch.points} points`
-}
-
-// Auto swap sides state on the rules tile: the rule plus an ON/OFF pill.
-function AutoSwapStatus({ sideSwitch }: { sideSwitch: SideSwitch }) {
-  const on = sideSwitch.kind !== 'off'
-  const text = sideSwitch.kind === 'off' ? 'Off' : sideSwitch.kind === 'half' ? 'At half' : `Every ${sideSwitch.points}`
-  return (
-    <div className="flex h-5 min-w-0 items-center gap-[5px] text-[13px] leading-none font-bold whitespace-nowrap">
-      {/* Dropped on narrow screens, where the rule text needs the room. */}
-      <SwapIcon size={14} className="shrink-0 max-[389px]:hidden" />
-      <span className="truncate">{text}</span>
-      <span
-        className={`inline-flex h-4 shrink-0 items-center rounded-full px-1.5 text-[9px] leading-none font-extrabold tracking-[0.08em] ${
-          on ? 'bg-flip-digit text-ink' : 'bg-white/20 text-white'
-        }`}
-      >
-        {on ? 'ON' : 'OFF'}
-      </span>
     </div>
   )
 }

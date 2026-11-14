@@ -59,7 +59,7 @@ export function HomePage() {
       </HeaderBand>
 
       {/* Only the in-progress card overlaps the band; otherwise content starts below it. */}
-      <div className={`relative flex flex-col gap-[22px] px-4 ${showProgress ? '-mt-3.5' : 'mt-5'}`}>
+      <div className={`relative flex flex-col gap-[22px] px-4 pb-4 ${showProgress ? '-mt-3.5' : 'mt-5'}`}>
         {showProgress && (
           <section
             aria-label="Game in progress"
@@ -145,10 +145,6 @@ export function HomePage() {
           )}
         </section>
       </div>
-
-      <footer className="mt-auto px-4 pt-5 pb-[max(16px,env(safe-area-inset-bottom))] text-center text-xs text-subtle">
-        v{__APP_VERSION__} · Made by Bryan Hadinata
-      </footer>
 
       <HistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} />
 

@@ -31,7 +31,7 @@ export function SessionPlayersDialog({ open, onClose, session, ...rest }: Sessio
   const [shown, setShown] = useState(session)
   if (session && session !== shown) setShown(session)
   return (
-    <DialogShell open={open} onDismiss={onClose} labelledBy={titleId} className="max-h-full overflow-hidden">
+    <DialogShell open={open} onDismiss={onClose} labelledBy={titleId} width="max-w-sm tablet:max-w-[560px]" className="max-h-full overflow-hidden">
       {shown && <SessionPlayersForm {...rest} session={shown} titleId={titleId} onClose={onClose} />}
     </DialogShell>
   )

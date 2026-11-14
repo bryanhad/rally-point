@@ -1,3 +1,14 @@
+/* Layout modes. Phone is the default (no variant): narrower than 744px, or shorter than 600px,
+   so a phone held sideways (~844x390) stays on the phone layout. Tablets need both a width and
+   a height, which Tailwind's built-in breakpoints can't express, hence custom variants.
+   - tablet:            any tablet layout (portrait or landscape)
+   - tablet-portrait:   744-1023px wide (B2 portrait)
+   - tablet-landscape:  1024px and wider (B2 landscape) */
+@custom-variant tablet (@media (width >= 744px) and (height >= 600px));
+@custom-variant tablet-portrait (@media (744px <= width < 1024px) and (height >= 600px));
+@custom-variant tablet-landscape (@media (width >= 1024px) and (height >= 600px));
+/* Keep tablet-landscape in sync with TABLET_LANDSCAPE in components/ui/overlay.ts. */
+
 /* Design tokens: the single source for colours, radii and motion.
    Tailwind turns each --color-* into utilities (bg-band, text-muted, border-line, ...),
    and SVGs can use them directly as var(--color-...). Team colours live in
@@ -65,11 +76,23 @@
   --band-line: rgba(255, 255, 255, 0.28);
 }
 
-/* Every bottom sheet is exactly 75% of the dynamic viewport tall, falling back to vh where dvh
-   is unsupported. */
+/* Bottom sheet height, falling back to vh where dvh is unsupported: 75% of the viewport on
+   phones, 72% in tablet portrait, and the full height for the tablet-landscape side sheet. */
 .sheet-h {
   height: 75vh;
   height: 75dvh;
+}
+@media (744px <= width < 1024px) and (height >= 600px) {
+  .sheet-h {
+    height: 72vh;
+    height: 72dvh;
+  }
+}
+@media (width >= 1024px) and (height >= 600px) {
+  .sheet-h {
+    height: 100vh;
+    height: 100dvh;
+  }
 }
 
 /* Range slider (score thickness): 6px track filled up to --fill, 24px white thumb with a

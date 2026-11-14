@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { CloseIcon } from './icons'
-import { usePresence, usePrefersReducedMotion, useEscape, useFocusHandoff, useScrollLock } from './overlay'
+import {
+  TABLET_LANDSCAPE,
+  useEscape,
+  useFocusHandoff,
+  useMediaQuery,
+  usePresence,
+  usePrefersReducedMotion,
+  useScrollLock,
+} from './overlay'
 
 const DURATION = 300
-// Close when released past this share of the sheet's height, or when flicked faster than this.
+// Close when released past this share of the sheet's size, or when flicked faster than this.
 const CLOSE_DISTANCE = 0.25
 const CLOSE_VELOCITY = 0.5 // px per ms
 
@@ -30,9 +38,11 @@ type BottomSheetProps = {
   children: ReactNode
 }
 
-// Bottom sheet: slides up over a fading overlay, always 75% of the viewport tall (whatever the
-// content), and closes by dragging down, the X button, tapping the overlay or Escape — all with
-// the same animation.
+// Bottom sheet: slides up over a fading overlay at a fixed height whatever the content (75% of
+// the viewport on phones; 680px wide and 72% tall in tablet portrait), and closes by dragging
+// down, the X button, tapping the overlay or Escape, all with the same animation. In tablet
+// landscape it's a 460px side sheet on the right edge instead: full height, slides in from the
+// right and closes with a swipe right.
 export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, actions, subheader, fade, footer, children }: BottomSheetProps) {
   const { mounted, shown } = usePresence(open, DURATION)
   const reduced = usePrefersReducedMotion()
@@ -40,56 +50,71 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, ac
   useEscape(open, onClose)
   const sheetRef = useFocusHandoff<HTMLDivElement>(open && mounted)
   const bodyRef = useRef<HTMLDivElement>(null)
+  // Side sheet: moves and drags along x (towards the right edge) instead of y (down).
+  const side = useMediaQuery(TABLET_LANDSCAPE)
+  const sideRef = useRef(side)
+  useEffect(() => {
+    sideRef.current = side
+  }, [side])
 
-  // Drag offset in px while the finger is down; null when not dragging.
+  // Drag offset in px along the closing axis (down, or right for the side sheet) while the finger
+  // is down; null when not dragging.
   const [drag, setDrag] = useState<number | null>(null)
-  const track = useRef<{ startY: number; lastY: number; lastT: number; velocity: number } | null>(null)
+  const track = useRef<{ start: number; last: number; lastT: number; velocity: number } | null>(null)
+  // The pointer coordinate on the closing axis.
+  const along = (x: number, y: number) => (sideRef.current ? x : y)
 
-  function begin(y: number) {
-    track.current = { startY: y, lastY: y, lastT: performance.now(), velocity: 0 }
+  function begin(at: number) {
+    track.current = { start: at, last: at, lastT: performance.now(), velocity: 0 }
     setDrag(0)
   }
-  function move(y: number) {
+  function move(at: number) {
     const t = track.current
     if (!t) return
     const now = performance.now()
-    t.velocity = (y - t.lastY) / Math.max(1, now - t.lastT)
-    t.lastY = y
+    t.velocity = (at - t.last) / Math.max(1, now - t.lastT)
+    t.last = at
     t.lastT = now
-    // Follow the finger downwards; resist a little when pulled up.
-    const dy = y - t.startY
-    setDrag(dy > 0 ? dy : dy / 6)
+    // Follow the finger towards closing; resist a little the other way.
+    const d = at - t.start
+    setDrag(d > 0 ? d : d / 6)
   }
   function end() {
     const t = track.current
     track.current = null
     if (!t) return
-    const height = sheetRef.current?.offsetHeight ?? 1
-    const dy = t.lastY - t.startY
+    const el = sheetRef.current
+    const size = (sideRef.current ? el?.offsetWidth : el?.offsetHeight) ?? 1
+    const d = t.last - t.start
     setDrag(null)
-    if (dy > height * CLOSE_DISTANCE || t.velocity > CLOSE_VELOCITY) onClose()
+    if (d > size * CLOSE_DISTANCE || t.velocity > CLOSE_VELOCITY) onClose()
   }
 
-  // Dragging from the body only starts when its list is scrolled to the top and the finger
-  // moves down; otherwise the list scrolls normally.
+  // Dragging from the body only starts when the finger moves the closing way: down with the list
+  // scrolled to the top, or (side sheet) mostly to the right. Otherwise the list scrolls normally.
   useEffect(() => {
     const body = bodyRef.current
     if (!body || !mounted) return
+    let startX = 0
     let startY = 0
     let dragging = false
     const onStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX
       startY = e.touches[0].clientY
       dragging = false
     }
     const onMove = (e: TouchEvent) => {
-      const y = e.touches[0].clientY
-      if (!dragging && body.scrollTop <= 0 && y - startY > 4) {
+      const { clientX: x, clientY: y } = e.touches[0]
+      const dx = x - startX
+      const dy = y - startY
+      const closing = sideRef.current ? dx > 4 && dx > Math.abs(dy) : body.scrollTop <= 0 && dy > 4
+      if (!dragging && closing) {
         dragging = true
-        begin(startY)
+        begin(along(startX, startY))
       }
       if (dragging) {
         e.preventDefault()
-        move(y)
+        move(along(x, y))
       }
     }
     const onEnd = () => {
@@ -113,18 +138,31 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, ac
   if (!mounted) return null
 
   const visible = shown && open
+  const axis = side ? 'translateX' : 'translateY'
   const transform = reduced
     ? undefined
     : drag !== null
-      ? `translateY(${drag}px)`
+      ? `${axis}(${drag}px)`
       : visible
-        ? 'translateY(0)'
-        : 'translateY(100%)'
+        ? `${axis}(0)`
+        : `${axis}(100%)`
+  // Drag from the handle, header or the side sheet's grab bar (buttons excepted).
+  const dragHandlers = {
+    onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement).closest('button')) return
+      e.currentTarget.setPointerCapture(e.pointerId)
+      begin(along(e.clientX, e.clientY))
+    },
+    onPointerMove: (e: PointerEvent<HTMLDivElement>) => track.current && move(along(e.clientX, e.clientY)),
+    onPointerUp: end,
+    onPointerCancel: end,
+  }
   const transition =
     drag !== null ? 'none' : `transform ${DURATION}ms var(--ease-sheet), opacity ${DURATION}ms var(--ease-sheet)`
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    // Same z-index as dialogs: whichever opened last is on top (see DialogShell).
+    <div className="fixed inset-0 z-50 flex items-end justify-center tablet-landscape:items-stretch tablet-landscape:justify-end">
       <div
         aria-hidden
         onClick={onClose}
@@ -137,22 +175,20 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, ac
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : undefined)}
         tabIndex={-1}
-        className={`sheet-h relative flex w-full max-w-xl flex-col rounded-t-sheet bg-white outline-none`}
+        className={`sheet-h relative flex w-full flex-col rounded-t-sheet bg-white outline-none tablet-portrait:w-[680px] tablet-portrait:max-w-full tablet-landscape:w-[460px] tablet-landscape:max-w-full tablet-landscape:rounded-tr-none tablet-landscape:rounded-bl-sheet tablet-landscape:pt-4 tablet-landscape:pr-[env(safe-area-inset-right)] tablet-landscape:shadow-[-12px_0_40px_rgba(14,18,26,0.25)]`}
         style={{ transform, transition, opacity: reduced ? (visible ? 1 : 0) : 1 }}
       >
-        {/* Drag area: handle + header. touch-action none so the browser doesn't scroll instead. */}
+        {/* Side sheet: a short vertical grab bar on the left edge, in place of the top handle. */}
         <div
-          className="shrink-0 cursor-grab touch-none select-none"
-          onPointerDown={(e) => {
-            if ((e.target as HTMLElement).closest('button')) return
-            e.currentTarget.setPointerCapture(e.pointerId)
-            begin(e.clientY)
-          }}
-          onPointerMove={(e) => track.current && move(e.clientY)}
-          onPointerUp={end}
-          onPointerCancel={end}
+          aria-hidden
+          className="absolute inset-y-0 left-0 z-[1] hidden w-5 cursor-grab touch-none items-center justify-center select-none tablet-landscape:flex"
+          {...dragHandlers}
         >
-          <div className="flex justify-center pt-2">
+          <span className="h-10 w-[5px] rounded-full bg-line-strong" />
+        </div>
+        {/* Drag area: handle + header. touch-action none so the browser doesn't scroll instead. */}
+        <div className="shrink-0 cursor-grab touch-none select-none" {...dragHandlers}>
+          <div className="flex justify-center pt-2 tablet-landscape:hidden">
             <span className="h-[5px] w-10 rounded-full bg-line-strong" />
           </div>
           <div

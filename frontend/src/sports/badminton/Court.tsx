@@ -29,12 +29,16 @@ type CourtProps = {
   top?: ReactNode
   // Covers the whole court with a dark layer holding this content (e.g. "Pick players").
   overlay?: ReactNode
+  // 'lg': bigger chips for the tablet's Court preview.
+  size?: ChipSize
 }
 
 type Cell = { team: TeamId; slot: number; id: string }
 type Line = { x1: number; y1: number; x2: number; y2: number }
 
-export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam, top, overlay }: CourtProps) {
+export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam, top, overlay, size = 'md' }: CourtProps) {
+  const chip = CHIP[size]
+  const avatarLine = CHIP_INSET + chip.avatar / 2
   const server = serverId(court)
   const receiver = receiverId(court)
   // An empty spot darkens the court so the "Tap to pick" chip is all that stands out.
@@ -51,7 +55,8 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
   }
 
   // The serve line joins the net-facing ends of the server's and receiver's name pills
-  // (at their vertical middle), measured from the DOM so it follows the real layout.
+  // (at their vertical middle), measured from the DOM so it follows the real layout. Divided by
+  // the on-screen scale, so a parent's transform (a dialog scaling in) can't skew it.
   const courtRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef(new Map<string, HTMLElement>())
   const [line, setLine] = useState<Line | null>(null)
@@ -64,11 +69,18 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
       const to = chipRefs.current.get(receiver)
       if (!from || !to) return setLine(null)
       const box = container.getBoundingClientRect()
+      // On-screen size / layout size: below 1 while a parent is scaled (a dialog opening).
+      const scale = box.width / container.offsetWidth || 1
       const netEdge = (el: HTMLElement) => {
         const r = el.getBoundingClientRect()
         // A pill left of the net faces it with its right end, and vice versa.
         const leftOfNet = r.left + r.width / 2 < box.left + box.width / 2
-        return { x: (leftOfNet ? r.right : r.left) - box.left, y: r.top + r.height / 2 - box.top }
+        // Back to the court's own (unscaled) pixels, measured from inside its white border,
+        // where the line's SVG starts.
+        return {
+          x: ((leftOfNet ? r.right : r.left) - box.left) / scale - container.clientLeft,
+          y: (r.top + r.height / 2 - box.top) / scale - container.clientTop,
+        }
       }
       const a = netEdge(from)
       const b = netEdge(to)
@@ -83,7 +95,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
   return (
     <div className="shrink-0">
       {top && <div className="mb-2">{top}</div>}
-      <div className="relative rounded-card bg-court p-2.5">
+      <div className={`relative bg-court ${size === 'lg' ? 'rounded-[24px] p-3.5' : 'rounded-card p-2.5'}`}>
         <div
           ref={courtRef}
           className="relative grid aspect-[342/176] grid-cols-2 grid-rows-2 border-2 border-white bg-court-inner"
@@ -101,8 +113,9 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
               <line
                 {...line}
                 stroke="var(--color-serve)"
-                strokeWidth="2.5"
-                strokeDasharray="3 6"
+                // Thicker on the tablet's big court, so it reads from a distance.
+                strokeWidth={size === 'lg' ? 4 : 2.5}
+                strokeDasharray={size === 'lg' ? '5 9' : '3 6'}
                 strokeLinecap="round"
               />
             </svg>
@@ -120,6 +133,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                   {cell?.id === EMPTY_SLOT && (
                     <EmptyChip
                       raised={dimmed}
+                      size={size}
                       half={half}
                       color={TEAM_COLORS[colors[cell.team]]}
                       teamName={colors[cell.team]}
@@ -129,6 +143,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                   {cell && cell.id !== EMPTY_SLOT && (
                     <PlayerChip
                       player={byId.get(cell.id) ?? { name: '?' }}
+                      size={size}
                       half={half}
                       color={TEAM_COLORS[colors[cell.team]]}
                       serving={cell.id === server}
@@ -162,9 +177,9 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                     aria-hidden
                     className="absolute w-0.5 rounded-full bg-white/55"
                     style={{
-                      [edge]: AVATAR_LINE - 1,
-                      top: `calc(25% + ${AVATAR_SIZE / 2}px)`,
-                      bottom: `calc(25% + ${AVATAR_SIZE / 2}px)`,
+                      [edge]: avatarLine - 1,
+                      top: `calc(25% + ${chip.avatar / 2}px)`,
+                      bottom: `calc(25% + ${chip.avatar / 2}px)`,
                     }}
                   />
                   <button
@@ -173,22 +188,22 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                     aria-label={`Swap ${first} and ${second}`}
                     title={`Swap ${first} and ${second}`}
                     className="group absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center"
-                    style={{ [edge]: AVATAR_LINE - 22 }}
+                    style={{ [edge]: avatarLine - 22 }}
                   >
                     <span
-                      className="flex size-8 items-center justify-center rounded-full border-[2.5px] border-white text-white shadow-[0_1px_4px_rgba(14,18,26,0.25)] group-active:opacity-80"
+                      className={`flex items-center justify-center rounded-full border-[2.5px] border-white text-white shadow-[0_1px_4px_rgba(14,18,26,0.25)] group-active:opacity-80 ${size === 'lg' ? 'size-11' : 'size-8'}`}
                       style={{ backgroundColor: TEAM_COLORS[colors[team]] }}
                     >
-                      <SwapIcon size={15} className="rotate-90" />
+                      <SwapIcon size={size === 'lg' ? 20 : 15} className="rotate-90" />
                     </span>
                   </button>
                 </Fragment>
               )
             })}
         </div>
-        {dimmed && <div aria-hidden className="absolute inset-0 z-[5] rounded-card bg-[rgba(14,18,26,0.62)]" />}
+        {dimmed && <div aria-hidden className="absolute inset-0 z-[5] rounded-[inherit] bg-[rgba(14,18,26,0.62)]" />}
         {overlay && (
-          <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3 rounded-card bg-[rgba(14,18,26,0.66)] px-5">
+          <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3 rounded-[inherit] bg-[rgba(14,18,26,0.66)] px-5">
             {overlay}
           </div>
         )}
@@ -205,6 +220,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
 
 type PlayerChipProps = {
   player: Pick<Player, 'name' | 'color'>
+  size?: ChipSize
   half: SideKey
   color: string
   serving: boolean
@@ -215,11 +231,26 @@ type PlayerChipProps = {
   onClick?: () => void
 }
 
-// Chip geometry: a 50px avatar circle, inset 6px from the court's outer edge. The partner swap
-// button and its line sit on the avatars' centre line.
+// Chip geometry: an avatar circle inset 6px from the court's outer edge, and a name pill that
+// tucks `tuck` px under it. The partner swap button and its line sit on the avatars' centre line.
+type ChipSize = 'md' | 'lg'
 const CHIP_INSET = 6
-const AVATAR_SIZE = 50
-const AVATAR_LINE = CHIP_INSET + AVATAR_SIZE / 2
+const CHIP = {
+  md: { avatar: 50, ring: 3, initials: 15, pill: 30, text: 13, maxPill: 116, tuck: 14, padIn: 20, padOut: 12, plus: 20 },
+  lg: { avatar: 68, ring: 4, initials: 20, pill: 40, text: 18, maxPill: 157, tuck: 19, padIn: 27, padOut: 16, plus: 26 },
+}
+
+// The name pill's size and the side it tucks under the avatar on.
+function pillStyle(c: (typeof CHIP)[ChipSize], right: boolean) {
+  return {
+    height: c.pill,
+    fontSize: c.text,
+    lineHeight: `${c.pill}px`,
+    [right ? 'marginRight' : 'marginLeft']: -c.tuck,
+    paddingLeft: right ? c.padOut : c.padIn,
+    paddingRight: right ? c.padIn : c.padOut,
+  }
+}
 
 // Avatar ring: gold on the server, white on the receiver, a light team colour otherwise.
 function ringColor(color: string, serving: boolean, receiving: boolean) {
@@ -230,8 +261,9 @@ function ringColor(color: string, serving: boolean, receiving: boolean) {
 
 // An initials avatar on the court's outer side, overlapping a name pill in the team colour that
 // runs towards the net. The right half is the mirror image.
-export function PlayerChip({ player, half, color, serving, receiving, crowned, pillRef, onClick }: PlayerChipProps) {
+export function PlayerChip({ player, size = 'md', half, color, serving, receiving, crowned, pillRef, onClick }: PlayerChipProps) {
   const { name } = player
+  const c = CHIP[size]
   const right = half === 'right'
   // Players show their avatar colour; old snapshots without one stay white, since grey looks
   // washed out against the court.
@@ -248,10 +280,12 @@ export function PlayerChip({ player, half, color, serving, receiving, crowned, p
       >
         <span
           aria-hidden
-          className={`relative z-[1] flex shrink-0 items-center justify-center rounded-full border-[3px] font-extrabold ${player.color ? 'text-[15px]' : 'text-sm'}`}
+          className="relative z-[1] flex shrink-0 items-center justify-center rounded-full font-extrabold"
           style={{
-            width: AVATAR_SIZE,
-            height: AVATAR_SIZE,
+            width: c.avatar,
+            height: c.avatar,
+            borderWidth: c.ring,
+            fontSize: player.color ? c.initials : c.initials - 1,
             backgroundColor: avatar.bg,
             color: avatar.fg,
             borderColor: ringColor(color, serving, receiving),
@@ -259,14 +293,12 @@ export function PlayerChip({ player, half, color, serving, receiving, crowned, p
         >
           {initials(name)}
         </span>
-        {/* Tucks 14px under the avatar; long names are cut off with an ellipsis. */}
+        {/* Tucks under the avatar; long names are cut off with an ellipsis. */}
         <span
           ref={pillRef}
           aria-hidden
-          className={`h-[30px] min-w-0 max-w-[116px] truncate text-[13px] leading-[30px] font-extrabold text-white ${
-            right ? '-mr-3.5 rounded-l-full pr-5 pl-3' : '-ml-3.5 rounded-r-full pr-3 pl-5'
-          }`}
-          style={{ backgroundColor: color }}
+          className={`min-w-0 truncate font-extrabold text-white ${right ? 'rounded-l-full' : 'rounded-r-full'}`}
+          style={{ backgroundColor: color, maxWidth: c.maxPill, ...pillStyle(c, right) }}
         >
           {name}
         </span>
@@ -278,7 +310,11 @@ export function PlayerChip({ player, half, color, serving, receiving, crowned, p
         />
       )}
       {/* Right after the pill, on the net side. */}
-      {serving && <Shuttle className={`shrink-0 ${right ? 'mr-1' : 'ml-1'}`} />}
+      {serving && (
+        <Shuttle
+          className={`shrink-0 ${size === 'lg' ? `h-[35px] w-[27px] ${right ? 'mr-1.5' : 'ml-1.5'}` : right ? 'mr-1' : 'ml-1'}`}
+        />
+      )}
     </div>
   )
 }
@@ -286,12 +322,14 @@ export function PlayerChip({ player, half, color, serving, receiving, crowned, p
 // An empty spot: a dashed avatar in the team colour with a +, and a dashed "Tap to pick" pill.
 // It sits above the court's dark overlay. Read-only courts show it without the tap.
 function EmptyChip({
+  size = 'md',
   half,
   color,
   teamName,
   raised,
   onClick,
 }: {
+  size?: ChipSize
   half: SideKey
   color: string
   teamName: string
@@ -300,6 +338,7 @@ function EmptyChip({
   onClick?: () => void
 }) {
   const right = half === 'right'
+  const c = CHIP[size]
   return (
     <button
       type="button"
@@ -311,15 +350,16 @@ function EmptyChip({
       <span
         aria-hidden
         className="relative z-[1] flex shrink-0 items-center justify-center rounded-full border-[2.5px] border-dashed border-white text-white"
-        style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, backgroundColor: color }}
+        style={{ width: c.avatar, height: c.avatar, backgroundColor: color }}
       >
-        <PlusIcon size={20} />
+        <PlusIcon size={c.plus} />
       </span>
       <span
         aria-hidden
-        className={`h-[30px] truncate border-[1.5px] border-dashed border-white/85 bg-white/[0.18] text-[13px] leading-[27px] font-extrabold whitespace-nowrap text-white ${
-          right ? '-mr-3.5 rounded-l-full border-r-0 pr-5 pl-3' : '-ml-3.5 rounded-r-full border-l-0 pr-3 pl-5'
+        className={`truncate border-[1.5px] border-dashed border-white/85 bg-white/[0.18] font-extrabold whitespace-nowrap text-white ${
+          right ? 'rounded-l-full border-r-0' : 'rounded-r-full border-l-0'
         }`}
+        style={{ ...pillStyle(c, right), lineHeight: `${c.pill - 3}px` }}
       >
         Tap to pick
       </span>
