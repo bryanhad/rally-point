@@ -14,6 +14,9 @@ type HeaderBandProps = {
   bottom?: 'sm' | 'md' | 'lg'
   // false: children sit straight on the band (e.g. `BandTile`s) instead of inside the court-line frame.
   framed?: boolean
+  // 'tight' (scoreboard): 8px top padding and a 44px title row with 4px under it, so a control in
+  // the title (the match type switch) sits 8px above the tiles. Default: 4px / 48px.
+  spacing?: 'default' | 'tight'
 }
 
 const BOTTOM = { sm: 'pb-3', md: 'pb-3.5', lg: 'pb-5' }
@@ -29,21 +32,28 @@ export function HeaderBand({
   align = 'center',
   bottom = 'sm',
   framed = true,
+  spacing = 'default',
 }: HeaderBandProps) {
+  const tight = spacing === 'tight'
+  const row = tight ? 'mb-1 h-11' : 'h-12'
   return (
     <header
       className={`shrink-0 rounded-b-band bg-band px-2 text-white ${BOTTOM[bottom]} ${className}`}
-      style={{ paddingTop: 'max(4px, env(safe-area-inset-top))' }}
+      style={{ paddingTop: `max(${tight ? 8 : 4}px, env(safe-area-inset-top))` }}
     >
       {align === 'left' ? (
-        <div className="flex h-12 items-center justify-between pl-2">
+        <div className={`flex items-center justify-between pl-2 ${row}`}>
           <div className="truncate text-[13px] font-extrabold tracking-[0.32em]">{title}</div>
           <div>{right}</div>
         </div>
       ) : (
-        <div className="grid h-12 grid-cols-[44px_1fr_44px] items-center">
+        <div className={`grid grid-cols-[44px_1fr_44px] items-center ${row}`}>
           <div>{left}</div>
-          <div className="truncate text-center text-[13px] font-extrabold tracking-[0.32em]">{title}</div>
+          {typeof title === 'string' ? (
+            <div className="truncate text-center text-[13px] font-extrabold tracking-[0.32em]">{title}</div>
+          ) : (
+            <div className="flex min-w-0 justify-center">{title}</div>
+          )}
           <div>{right}</div>
         </div>
       )}

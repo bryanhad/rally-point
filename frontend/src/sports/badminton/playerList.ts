@@ -8,8 +8,7 @@ export function filterPlayers<T extends Pick<Player, 'name'>>(players: readonly 
   return needle ? players.filter((p) => p.name.toLowerCase().includes(needle)) : [...players]
 }
 
-// Tile sizes: the sheets (Change player) use 60px avatars; the modal cards 56px.
-export const TILE_LG = 'flex min-h-[116px] w-full flex-col items-center justify-start gap-1.5 rounded-2xl px-1 pt-2.5 pb-2'
+// Player tile in the modal cards' grids (56px avatars).
 export const TILE_SM = 'flex min-h-[108px] w-full flex-col items-center justify-start gap-1.5 rounded-2xl px-0.5 pt-2.5 pb-1.5'
 
 // Fewest players a session needs for each mode.

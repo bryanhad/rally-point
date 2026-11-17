@@ -4,9 +4,11 @@ import { CheckIcon, CloseIcon, PlusIcon } from '../../components/ui/icons'
 import { Avatar } from './Avatar'
 import { EMPTY_SLOT, otherTeam } from './game'
 import { findPlayer, initialPick, isFull, pickedCount, pickReducer, slotOrder, type PickAction, type PickState, type SlotRef } from './pick'
-import { STATUS_COLOR } from './playerList'
-import { TEAM_COLORS, TEAM_TINTS, type Config, type Player, type Session, type TeamColor, type TeamId } from './schema'
-import { gameCounts, nextGameNumber, statusText } from './session'
+import { NewPlayerDialog } from './NewPlayerDialog'
+import { TEAM_COLORS, TEAM_TINTS, type Config, type HistoryEntry, type Player, type Session, type TeamColor, type TeamId } from './schema'
+import { nextGameNumber } from './session'
+import { FlameLegend, NewPlayerRow, SessionPlayerRow } from './SessionPlayerRow'
+import { pickOrder, sessionStats } from './sessionStats'
 
 type PickPlayersDialogProps = {
   open: boolean
@@ -14,6 +16,10 @@ type PickPlayersDialogProps = {
   session: Session | null
   // Saved players (current names and colours).
   players: readonly Player[]
+  // The session's last finished game, for "won last game".
+  lastResult: HistoryEntry | null
+  // New player row: saves them, adds them to the session and returns their id.
+  onCreatePlayer: (name: string) => string
   mode: Config['mode']
   teamColors: Config['teamColors']
   // The team on the left of the court: its slots come first.
@@ -23,10 +29,9 @@ type PickPlayersDialogProps = {
 }
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-// Pick this game's players: a slot strip per team over the session players (fewest games
-// first). Always opens empty; "Same players" on the court is the rematch shortcut.
+// Pick this game's players: a slot strip per team over the session players (last game's
+// winners, then fewest games). Always opens empty; "Same players" on the court is the rematch shortcut.
 export function PickPlayersDialog({ open, onClose, session, ...rest }: PickPlayersDialogProps) {
   const titleId = useId()
   // Keep the last session while the card fades out.
@@ -53,6 +58,8 @@ function PickForm({
   onClose,
   session,
   players,
+  lastResult,
+  onCreatePlayer,
   mode,
   teamColors,
   leftTeam,
@@ -65,8 +72,9 @@ function PickForm({
     undefined,
     () => initialPick(size, leftTeam),
   )
-  // Session players still here, fewest games first (ties A–Z).
-  const rows = gameCounts(session, players).filter((r) => !r.left)
+  // Session players still here: last game's winners, then fewest games, ties A–Z.
+  const rows = pickOrder(sessionStats(session, players, { lastResult }))
+  const [adding, setAdding] = useState(false)
   const byId = new Map(rows.map((r) => [r.player.id, r.player]))
   const full = isFull(pick)
   const teamName = (team: TeamId) => `Team ${titleCase(teamColors[team])}`
@@ -125,48 +133,55 @@ function PickForm({
 
       <div className="flex shrink-0 items-baseline justify-between px-5 pt-3.5 pb-1">
         <div className="text-[11px] font-extrabold tracking-[0.2em] text-muted">SESSION PLAYERS</div>
-        <div className="text-xs text-subtle">Fewest games first</div>
+        <div className="text-xs text-subtle">Winners, then fewest games</div>
       </div>
 
       <div className="relative min-h-0 flex-1">
         <ul className="h-full overflow-y-auto overscroll-contain px-3 pb-6">
+          <li>
+            <NewPlayerRow note="Adds them to this session and slot" onClick={() => setAdding(true)} />
+            <FlameLegend />
+          </li>
           {rows.map((row) => {
             const at = findPlayer(pick, row.player.id)
             const color = at ? teamColors[at.team] : null
             return (
-              <li key={row.player.id} className="mt-1 first:mt-0">
-                <button
-                  type="button"
+              <li key={row.player.id} className="mt-0.5">
+                <SessionPlayerRow
+                  row={row}
+                  teamColors={teamColors}
                   // Picked players are changed from the slots above, not from here.
-                  onClick={at ? undefined : () => dispatch({ type: 'tapPlayer', id: row.player.id })}
-                  aria-disabled={at ? true : undefined}
-                  aria-label={`${row.player.name}, ${plural(row.games, 'game')}${at ? `, on ${teamName(at.team)}` : ''}`}
-                  className={`flex w-full items-center gap-3 rounded-[14px] px-2.5 py-2 text-left ${at ? 'cursor-default' : 'active:opacity-80'}`}
+                  disabled={!!at}
+                  onClick={() => dispatch({ type: 'tapPlayer', id: row.player.id })}
+                  labelSuffix={at ? `, on ${teamName(at.team)}` : ''}
                   style={{ backgroundColor: color ? `color-mix(in srgb, ${TEAM_TINTS[color].bg} 65%, white)` : undefined }}
-                >
-                  <Avatar player={row.player} size={38} />
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate text-[15px] font-bold">{row.player.name}</span>
-                    <span className={`text-xs font-semibold ${STATUS_COLOR[row.status]}`}>{statusText(row)}</span>
-                  </span>
-                  <span className="shrink-0 text-sm font-extrabold whitespace-nowrap tabular-nums">
-                    {row.games} <span className="text-xs font-semibold text-muted">{row.games === 1 ? 'game' : 'games'}</span>
-                  </span>
-                  {color ? (
-                    <span
-                      className="flex size-6 shrink-0 items-center justify-center rounded-full text-white"
-                      style={{ backgroundColor: TEAM_COLORS[color] }}
-                    >
-                      <CheckIcon size={12} strokeWidth={3.4} />
-                    </span>
-                  ) : (
-                    <span className="size-6 shrink-0 rounded-full border-[1.5px] border-line-dashed" />
-                  )}
-                </button>
+                  trailing={
+                    color ? (
+                      <span
+                        className="flex size-6 shrink-0 items-center justify-center rounded-full text-white"
+                        style={{ backgroundColor: TEAM_COLORS[color] }}
+                      >
+                        <CheckIcon size={12} strokeWidth={3.4} />
+                      </span>
+                    ) : (
+                      <span className="size-6 shrink-0 rounded-full border-[1.5px] border-line-dashed" />
+                    )
+                  }
+                />
               </li>
             )
           })}
         </ul>
+        <NewPlayerDialog
+          open={adding}
+          onClose={() => setAdding(false)}
+          players={[...players]}
+          primaryLabel="Add & pick"
+          onPrimary={(name) => {
+            setAdding(false)
+            dispatch({ type: 'tapPlayer', id: onCreatePlayer(name) })
+          }}
+        />
         <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-white/0 to-white" />
       </div>
 

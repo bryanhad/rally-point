@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>v6 phone · Game point modal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+
+  <div style="background: #2268A6; height: 128px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 12px; right: 12px; top: 192px; height: 210px; border-radius: 18px; background: #2B7A55"></div>
+  <div style="position: absolute; left: 12px; top: 520px; width: 179px; height: 196px; border-radius: 22px; background: #2F62D6; color: #FFFFFF; font-size: 112px; font-weight: 800; display: flex; align-items: center; justify-content: center">11</div>
+  <div style="position: absolute; right: 12px; top: 520px; width: 179px; height: 196px; border-radius: 22px; background: #DD534C; color: #FFFFFF; font-size: 112px; font-weight: 800; display: flex; align-items: center; justify-content: center">0</div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.6)"></div>
+
+  <div role="alertdialog" aria-modal="true" aria-labelledby="gpTitle" style="position: absolute; left: 16px; right: 16px; top: 200px; background: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(14,18,26,0.35)">
+    <div style="background: #2F62D6; color: #FFFFFF; padding: 24px 20px 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative">
+      <div style="position: absolute; left: 10px; top: 10px; right: 10px; bottom: 10px; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 16px"></div>
+      <span style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.16); box-shadow: 0 0 0 9px rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center"><svg width="32" height="38" viewBox="0 0 20 24" aria-hidden="true"><path d="M4 1h4.5l3 8H7z" fill="#FFFFFF"/><path d="M16 1h-4.5l-3 8H13z" fill="#C9D6F5"/><circle cx="10" cy="15.5" r="7.5" fill="#F2C94C" stroke="#C99A1A" stroke-width="1.2"/><circle cx="10" cy="15.5" r="4" fill="none" stroke="#FFF3CC" stroke-width="1.4"/></svg></span>
+      <div id="gpTitle" style="font-size: 24px; font-weight: 800; letter-spacing: 0.1em">GAME POINT</div>
+    </div>
+    <div style="padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 16px">
+      <div style="border-radius: 16px; background: #EEF3FC; padding: 12px 14px; display: flex; align-items: center; gap: 12px">
+        <div style="display: flex; flex-shrink: 0">
+          <span style="width: 40px; height: 40px; border-radius: 50%; background: #E0E6FB; color: #3346A8; border: 2.5px solid #EEF3FC; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center">KS</span>
+          <span style="width: 40px; height: 40px; border-radius: 50%; background: #EAE2FB; color: #5B3BA8; border: 2.5px solid #EEF3FC; margin-left: -12px; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">W</span>
+        </div>
+        <div style="flex: 1; min-width: 0; font-size: 15px; font-weight: 800; color: #1C3F8F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">kevin sanjaya &amp; wiliam</div>
+        <div style="flex-shrink: 0"><span style="display: flex; align-items: center; gap: 6px"><span style="height: 34px; min-width: 38px; padding: 0 7px; box-sizing: border-box; border-radius: 10px; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: center; line-height: 1; background: #2F62D6; color: #FFFFFF">11</span><span style="font-size: 14px; font-weight: 800; color: #C5CBD6; ">–</span><span style="height: 34px; min-width: 38px; padding: 0 7px; box-sizing: border-box; border-radius: 10px; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: center; line-height: 1; background: #DD534C; color: #FFFFFF">0</span></span></div>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button style="flex: 1; height: 52px; border: none; border-radius: 14px; background: #EEF1F5; color: #141A26; font-size: 14px; font-weight: 700; padding: 0 8px; white-space: nowrap">Keep playing</button>
+        <a href="v6-phone-modal-game-won.html" style="flex: 1.75; height: 52px; border-radius: 14px; background: #141A26; color: #FFFFFF; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; text-decoration: none">End game</a>
+      </div>
+      <div style="font-size: 12px; color: #8A93A6; margin-top: -6px; text-align: center">You can still end it later with <span style="font-weight: 700; color: #5A6478">End game</span>.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

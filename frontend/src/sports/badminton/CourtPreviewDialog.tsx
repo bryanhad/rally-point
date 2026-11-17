@@ -1,8 +1,8 @@
-import { useId, type ReactNode } from 'react'
+import { useId } from 'react'
 import { DialogShell } from '../../components/ui/Dialog'
 import { CloseIcon } from '../../components/ui/icons'
 import { Court } from './Court'
-import { ServerIcon, SidesIcon } from './icons'
+import { GamePointToast } from './GamePointToast'
 import type { ScoreboardView } from './scoreboardView'
 
 // Tablet only: the court diagram and its actions, which the B2 main screen leaves out. Opened
@@ -41,20 +41,19 @@ export function CourtPreviewDialog({ open, onClose, v }: { open: boolean; onClos
         size="lg"
         onPick={v.onPick}
         onSwapPartners={v.onSwapPartners}
+        onSwapSides={v.onSides}
+        onChangeServer={v.started ? undefined : v.onServer}
+        // Game point: the team's half glows, and the toast (with its dim) plays on this court.
+        glow={v.gamePoint && { team: v.gamePoint.team, fast: !!v.gamePoint.toast }}
+        toast={
+          v.gamePoint?.toast && (
+            <GamePointToast key={v.gamePoint.toast.id} toast={v.gamePoint.toast} color={v.config.teamColors[v.gamePoint.team]} dim />
+          )
+        }
       />
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex gap-2">
-          <PreviewButton label="Sides" aria="Swap player sides" icon={<SidesIcon />} onClick={v.onSides} />
-          <PreviewButton
-            label="Server"
-            aria="Swap server side"
-            icon={<ServerIcon />}
-            onClick={v.onServer}
-            // Only before the first rally, as on the phone.
-            disabled={v.started}
-          />
-        </div>
+      {/* Two lines tall either way, so the card keeps its height when the swap line goes. */}
+      <div className="flex min-h-10 items-center justify-end gap-4">
         <p className="text-right text-sm text-muted">
           Tap a player to change them.
           {v.onSwapPartners && (
@@ -66,32 +65,5 @@ export function CourtPreviewDialog({ open, onClose, v }: { open: boolean; onClos
         </p>
       </div>
     </DialogShell>
-  )
-}
-
-function PreviewButton({
-  label,
-  aria,
-  icon,
-  onClick,
-  disabled,
-}: {
-  label: string
-  aria: string
-  icon: ReactNode
-  onClick: () => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={aria}
-      onClick={onClick}
-      disabled={disabled}
-      className="flex h-12 items-center gap-1.5 rounded-[14px] bg-soft px-4 text-[15px] font-bold text-ink enabled:active:opacity-75 disabled:bg-softer disabled:text-disabled"
-    >
-      {icon}
-      {label}
-    </button>
   )
 }

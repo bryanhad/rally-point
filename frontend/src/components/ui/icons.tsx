@@ -41,6 +41,13 @@ export const ChevronRightIcon = (p: IconProps) => (
   </Svg>
 )
 
+export const ArrowRightIcon = (p: IconProps) => (
+  <Svg size={22} strokeWidth={2.4} {...p}>
+    <path d="M5 12h14" />
+    <path d="M13 6l6 6-6 6" />
+  </Svg>
+)
+
 export const GearIcon = (p: IconProps) => (
   <Svg size={24} {...p}>
     <circle cx="12" cy="12" r="3" />
@@ -145,6 +152,16 @@ export const SwapIcon = (p: IconProps) => (
     <path d="M15 5l3 3-3 3" />
     <path d="M20 16H6" />
     <path d="M9 13l-3 3 3 3" />
+  </Svg>
+)
+
+// Swap arrows of the pre-rally court controls (top arrow points left, bottom one right).
+export const SwapArrowsIcon = (p: IconProps & { strokeWidth?: number }) => (
+  <Svg size={18} strokeWidth={2.4} {...p}>
+    <path d="M4 8h16" />
+    <path d="M8 4L4 8l4 4" />
+    <path d="M20 16H4" />
+    <path d="M16 12l4 4-4 4" />
   </Svg>
 )
 

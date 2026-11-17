@@ -25,7 +25,9 @@ import {
 } from './game'
 import { ChangePlayerSheet, type PickerTarget } from './ChangePlayerSheet'
 import { CourtPreviewDialog } from './CourtPreviewDialog'
-import { GamePointDialog, GameWonDialog } from './GameEndDialogs'
+import { GameWonDialog, TargetReachedDialog } from './GameEndDialogs'
+import { useGamePointToast } from './useGamePointToast'
+import { afterRally, gamePointTeam } from './rules'
 import { GameRulesSheet } from './GameRulesSheet'
 import { HistorySheet } from './HistorySheet'
 import { ManagePlayersSheet } from './ManagePlayersSheet'
@@ -39,7 +41,7 @@ import { SessionPlayersDialog } from './SessionPlayersDialog'
 import { GameCountsDialog } from './GameCountsDialog'
 import { Racket, Rackets } from './icons'
 import { type Config, type HistoryEntry, type Player, type TeamId } from './schema'
-import type { ScoreboardView } from './scoreboardView'
+import { colorName, type ScoreboardView } from './scoreboardView'
 import { ScoreboardPhone } from './ScoreboardPhone'
 import { ScoreboardTablet } from './ScoreboardTablet'
 
@@ -48,9 +50,11 @@ import { ScoreboardTablet } from './ScoreboardTablet'
 export function Scoreboard() {
   const { game, court, steps, dispatch, config, setConfig, addHistoryEntry, history } = useBadminton()
 
+  // The team whose scoring tap just won the game (the end-of-game confirmation is open).
   // Tracked by team because an automatic change of ends on the same point may move
   // them to the other side of the screen.
-  const [matchPointTeam, setMatchPointTeam] = useState<TeamId | null>(null)
+  const [reachedTeam, setReachedTeam] = useState<TeamId | null>(null)
+  const gamePointToast = useGamePointToast()
   const [winnerEntry, setWinnerEntry] = useState<HistoryEntry | null>(null)
   const [pendingMode, setPendingMode] = useState<Config['mode'] | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
@@ -92,6 +96,8 @@ export function Scoreboard() {
   const byId = new Map(players.map((p) => [p.id, p]))
   const started = hasRallies(game)
   const session = game.sessions.current
+  // The session's last finished game (match history is newest first); gone after Clear history.
+  const lastResult = (session && history.entries.find((e) => e.sessionId === session.id)) || null
   // Between games in a session: the court waits for this game's players.
   const pickPending = !!session && game.awaitingPick
   // The court is covered (no session, or picking): game controls are off.
@@ -105,13 +111,22 @@ export function Scoreboard() {
       : null
   // Scoring (and ending the game) waits until every spot on court has a player.
   const emptySpot = hasEmptySlot(court)
+  const scores = { a: court.teams.a.score, b: court.teams.b.score }
 
   function rally(team: TeamId) {
     // Play happens inside a session: without one, a score tap starts one.
     if (!session) return setNewSessionOpen(true)
+    // The game ignores the tap while picking or with an empty spot, so nothing may fire then.
+    if (pickPending || emptySpot) return
     const score = court.teams[team].score + 1
     const rules = { totalPoints: config.totalPoints, sideSwitch: config.sideSwitch }
-    if (score === config.totalPoints) setMatchPointTeam(team)
+    // The only place a forward score happens, so the confirmation and the game point toast
+    // fire from here and never on Undo/Redo/Reset/reload (and click handlers don't double-run
+    // under StrictMode). The glow and the badge come from the score instead (gamePoint below).
+    const outcome = afterRally(scores, team, config.totalPoints)
+    if (outcome === 'won') setReachedTeam(team)
+    if (outcome === 'game-point') gamePointToast.show(team)
+    else gamePointToast.dismiss()
     const otherScore = court.teams[otherTeam(team)].score
     if (shouldSwitchSides(score, otherScore, rules)) toast(`Players switched sides (reached ${score})`)
     dispatch({
@@ -129,6 +144,7 @@ export function Scoreboard() {
     const last = steps.at(-1)
     if (!last) return
     dispatch({ type: 'undo' })
+    gamePointToast.clear()
     toast(describeUndo(last, nameOf))
   }
 
@@ -171,6 +187,7 @@ export function Scoreboard() {
     // Replay the saved copy to describe the entry that is about to come back.
     const next = replay({ ...game, log: game.redoLog! }).steps[game.log.length]
     dispatch({ type: 'redo' })
+    gamePointToast.clear()
     toast(describeRedo(next, nameOf))
   }
 
@@ -186,12 +203,16 @@ export function Scoreboard() {
     addHistoryEntry(entry)
     // Start the next game right away so the same game can't be recorded twice.
     dispatch({ type: 'newGame' })
-    setMatchPointTeam(null)
+    setReachedTeam(null)
     setConfirm(null)
     setWinnerEntry(entry)
   }
 
   const { a, b } = court.teams
+  // On game point right now, worked out from the score on every render.
+  const gpTeam = blocked ? null : gamePointTeam(scores, config.totalPoints)
+  // The toast only while its team is still on game point (Undo or Reset end it at once).
+  const shownToast = gamePointToast.toast && gamePointToast.toast.team === gpTeam ? gamePointToast.toast : null
   const reachedTotal = Math.max(a.score, b.score) >= config.totalPoints
   const leader: TeamId | 'draw' = a.score === b.score ? 'draw' : a.score > b.score ? 'a' : 'b'
   const teamNames = (team: TeamId) =>
@@ -234,15 +255,13 @@ export function Scoreboard() {
     blocked,
     emptySpot,
     reachedTotal,
+    gamePoint: gpTeam ? { team: gpTeam, toast: shownToast } : null,
+    courtOpen,
     canUndo: !blocked && game.log.length > 0,
     canRedo: !blocked && canRedo(game),
     sameLineup,
     gameNumber: session ? nextGameNumber(session) : null,
-    lastResult: (() => {
-      // History is newest first, so this is the session's last finished game.
-      const entry = session && history.entries.find((e) => e.sessionId === session.id)
-      return session && entry ? { gameNumber: session.games.length, entry } : null
-    })(),
+    lastResult: session && lastResult ? { gameNumber: session.games.length, entry: lastResult } : null,
     rallies,
     onRally: rally,
     onUndo: undo,
@@ -284,14 +303,18 @@ export function Scoreboard() {
 
       <CourtPreviewDialog open={courtOpen} onClose={() => setCourtOpen(false)} v={view} />
 
-      <GamePointDialog
-        team={matchPointTeam}
+      {/* The game point announcement for screen readers: one region, set by the toast. */}
+      <div role="status" aria-live="assertive" className="sr-only">
+        {shownToast && !shownToast.leaving ? `Game point, Team ${colorName(config, shownToast.team)}` : ''}
+      </div>
+
+      <TargetReachedDialog
+        team={reachedTeam}
         court={court}
         byId={byId}
         teamColors={config.teamColors}
-        totalPoints={config.totalPoints}
         onEnd={finishGame}
-        onKeepPlaying={() => setMatchPointTeam(null)}
+        onKeepPlaying={() => setReachedTeam(null)}
       />
 
       <GameWonDialog entry={winnerEntry} onNext={() => setWinnerEntry(null)} />
@@ -393,8 +416,8 @@ export function Scoreboard() {
       <ChangePlayerSheet
         target={picker}
         court={court}
-        // With a session running, only its players can be picked.
-        saved={session ? game.players.filter((p) => session.playerIds.includes(p.id)) : game.players}
+        session={session}
+        players={game.players}
         teamColors={config.teamColors}
         onClose={() => setPicker(null)}
         onPick={pickPlayer}
@@ -438,6 +461,7 @@ export function Scoreboard() {
         cancelLabel="Keep playing"
         onConfirm={() => {
           dispatch({ type: 'restart' })
+          gamePointToast.clear()
           setConfirm(null)
         }}
         onCancel={() => setConfirm(null)}
@@ -471,6 +495,12 @@ export function Scoreboard() {
         onClose={() => setPickOpen(false)}
         session={session}
         players={game.players}
+        lastResult={lastResult}
+        onCreatePlayer={(name) => {
+          const id = savePlayer(name)
+          if (session) dispatch({ type: 'setSessionPlayers', playerIds: [...session.playerIds, id] })
+          return id
+        }}
         mode={config.mode}
         teamColors={config.teamColors}
         leftTeam={court.leftTeam}

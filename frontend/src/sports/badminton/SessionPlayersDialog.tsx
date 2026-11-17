@@ -109,7 +109,7 @@ function SessionPlayersForm({
       <div className="relative mt-1 flex min-h-[132px] flex-[0_1_470px] flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div role="group" aria-label="Players in this session" className="grid grid-cols-3 gap-x-1.5 gap-y-1 px-3 pt-1.5 pb-6">
-            <NewPlayerTile size="sm" onClick={() => setAdding(true)} />
+            <NewPlayerTile onClick={() => setAdding(true)} />
             {shown.map((p) => (
               <SelectTile
                 key={p.id}

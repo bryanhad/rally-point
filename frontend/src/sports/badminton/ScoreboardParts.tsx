@@ -13,7 +13,8 @@ import type { Config, Player, Session, SideSwitch } from './schema'
 const TILE_CAPTION =
   'truncate text-[10px] leading-none font-bold tracking-[0.2em] opacity-85 max-[389px]:tracking-[0.12em]'
 
-// Singles/doubles segmented switch. Tablet size is a little bigger (52px tall).
+// Singles / doubles, on the blue band right after Back. Phone: a labelled pill switch centred in
+// the title row. Tablet: square icon-only segments. Tapping the current mode does nothing.
 export function ModeSwitch({
   mode,
   onMode,
@@ -28,22 +29,36 @@ export function ModeSwitch({
     <div
       role="group"
       aria-label="Match type"
-      className={`flex shrink-0 bg-soft p-[3px] ${tablet ? 'h-[52px] rounded-[14px]' : 'h-11 rounded-control'}`}
+      className={`flex shrink-0 bg-white/16 p-[3px] ${tablet ? 'h-[52px] rounded-[14px]' : 'h-9 rounded-full'}`}
     >
-      {(['singles', 'doubles'] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => onMode(m)}
-          aria-label={m === 'singles' ? 'Singles' : 'Doubles'}
-          aria-pressed={mode === m}
-          className={`flex items-center justify-center ${tablet ? 'w-[54px] rounded-[11px]' : 'w-12 rounded-[9px]'} ${
-            mode === m ? 'bg-white text-ink shadow-[0_1px_3px_rgba(20,26,38,0.15)]' : 'text-muted'
-          }`}
-        >
-          {m === 'singles' ? <Racket /> : <Rackets />}
-        </button>
-      ))}
+      {(['singles', 'doubles'] as const).map((m) => {
+        const label = m === 'singles' ? 'Singles' : 'Doubles'
+        const active = mode === m
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={active ? undefined : () => onMode(m)}
+            aria-label={label}
+            aria-pressed={active}
+            title={tablet ? label : undefined}
+            className={`flex items-center justify-center ${
+              tablet ? 'w-[54px] rounded-[11px]' : 'h-[30px] gap-1.5 rounded-full px-3 text-[13px] font-extrabold'
+            } ${
+              active
+                ? `bg-white text-band ${tablet ? 'shadow-[0_1px_3px_rgba(20,26,38,0.2)]' : 'shadow-[0_1px_3px_rgba(20,26,38,0.18)]'}`
+                : 'text-white/88 active:bg-white/10'
+            }`}
+          >
+            {m === 'singles' ? (
+              <Racket className={tablet ? '' : 'h-[18px] w-3.5'} strokeWidth={tablet ? 2 : 2.2} />
+            ) : (
+              <Rackets className={tablet ? '' : 'h-[18px] w-5'} strokeWidth={tablet ? 2 : 2.2} />
+            )}
+            {!tablet && label}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -128,7 +143,8 @@ export function SessionTile({
   wide?: boolean
 }) {
   const frame = wide
-    ? 'h-[60px]! w-[270px] shrink-0 gap-2.5 pr-2.5 pl-3.5 tablet-portrait:w-[230px]'
+    ? // Keeps its width when there's room; shrinks (text cut off) when the band is tight (744px).
+      'h-[60px]! w-[270px] min-w-0 shrink gap-2.5 pr-2.5 pl-3.5 tablet-portrait:w-[230px]'
     : 'flex-1 gap-1.5 pr-2 pl-3'
   const iconClassName = wide ? 'size-7!' : 'max-[389px]:hidden'
   if (!session) {
@@ -236,4 +252,3 @@ function AutoSwapStatus({ sideSwitch }: { sideSwitch: SideSwitch }) {
     </div>
   )
 }
-

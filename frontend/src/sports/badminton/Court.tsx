@@ -11,8 +11,8 @@ import {
   type CourtState,
   type SideKey,
 } from './game'
-import { PlusIcon, SwapIcon } from '../../components/ui/icons'
-import { Crown, RefereeChair, Shuttle } from './icons'
+import { PlusIcon, SwapArrowsIcon, SwapIcon } from '../../components/ui/icons'
+import { RefereeChair, Shuttle } from './icons'
 import { TEAM_COLORS, type Config, type Player, type TeamId } from './schema'
 
 type CourtProps = {
@@ -23,20 +23,40 @@ type CourtProps = {
   onPick?: (team: TeamId, slot: number) => void
   // Omit to hide the partner-swap buttons; shown on each half that has two players.
   onSwapPartners?: (team: TeamId) => void
-  // Players of this team wear the crown.
-  crownedTeam?: TeamId
-  // Optional row of controls above the court (e.g. mode switch, switch sides/serve).
+  // "Swap sides" on the net post (any time), and before the first rally the server's shuttle
+  // becomes a "Change server" button. Not shown while the court is covered or has an empty spot.
+  onSwapSides?: () => void
+  onChangeServer?: () => void
+  // Optional row of controls above the court.
   top?: ReactNode
   // Covers the whole court with a dark layer holding this content (e.g. "Pick players").
   overlay?: ReactNode
   // 'lg': bigger chips for the tablet's Court preview.
   size?: ChipSize
+  // Game point: that team's half of the court glows (it follows the team when ends swap),
+  // pulsing quickly while the toast is up.
+  glow?: { team: TeamId; fast: boolean } | null
+  // Laid over the court card (the game point toast, which dims the card itself).
+  toast?: ReactNode
 }
 
 type Cell = { team: TeamId; slot: number; id: string }
 type Line = { x1: number; y1: number; x2: number; y2: number }
 
-export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam, top, overlay, size = 'md' }: CourtProps) {
+export function Court({
+  court,
+  byId,
+  colors,
+  onPick,
+  onSwapPartners,
+  onSwapSides,
+  onChangeServer,
+  top,
+  overlay,
+  size = 'md',
+  glow,
+  toast,
+}: CourtProps) {
   const chip = CHIP[size]
   const avatarLine = CHIP_INSET + chip.avatar / 2
   const server = serverId(court)
@@ -44,6 +64,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
   // An empty spot darkens the court so the "Tap to pick" chip is all that stands out.
   // An overlay covers it all instead.
   const dimmed = !!onPick && !overlay && hasEmptySlot(court)
+  const controls = !overlay && !hasEmptySlot(court)
 
   // Place each player in a quadrant of the screen.
   const cells = new Map<string, Cell>()
@@ -54,18 +75,20 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
     })
   }
 
-  // The serve line joins the net-facing ends of the server's and receiver's name pills
-  // (at their vertical middle), measured from the DOM so it follows the real layout. Divided by
-  // the on-screen scale, so a parent's transform (a dialog scaling in) can't skew it.
+  // The serve line runs from the middle of the server's shuttle to the net-facing end of the
+  // receiver's name pill (at its vertical middle), measured from the DOM so it follows the real
+  // layout. Divided by the on-screen scale, so a parent's transform (a dialog scaling in) can't
+  // skew it.
   const courtRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef(new Map<string, HTMLElement>())
+  const shuttleRef = useRef<HTMLElement | null>(null)
   const [line, setLine] = useState<Line | null>(null)
 
   useLayoutEffect(() => {
     const container = courtRef.current
     if (!container) return
     const measure = () => {
-      const from = chipRefs.current.get(server)
+      const from = shuttleRef.current
       const to = chipRefs.current.get(receiver)
       if (!from || !to) return setLine(null)
       const box = container.getBoundingClientRect()
@@ -82,7 +105,14 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
           y: (r.top + r.height / 2 - box.top) / scale - container.clientTop,
         }
       }
-      const a = netEdge(from)
+      const middle = (el: HTMLElement) => {
+        const r = el.getBoundingClientRect()
+        return {
+          x: (r.left + r.width / 2 - box.left) / scale - container.clientLeft,
+          y: (r.top + r.height / 2 - box.top) / scale - container.clientTop,
+        }
+      }
+      const a = middle(from)
       const b = netEdge(to)
       setLine({ x1: a.x, y1: a.y, x2: b.x, y2: b.y })
     }
@@ -90,7 +120,7 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
     const observer = new ResizeObserver(measure)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [court, server, receiver])
+  }, [court, server, receiver, onChangeServer])
 
   return (
     <div className="shrink-0">
@@ -148,7 +178,14 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                       color={TEAM_COLORS[colors[cell.team]]}
                       serving={cell.id === server}
                       receiving={cell.id === receiver}
-                      crowned={cell.team === crownedTeam}
+                      onChangeServer={controls ? onChangeServer : undefined}
+                      shuttleRef={
+                        cell.id === server
+                          ? (el) => {
+                              shuttleRef.current = el
+                            }
+                          : undefined
+                      }
                       pillRef={(el) => {
                         if (el) chipRefs.current.set(cell.id, el)
                         else chipRefs.current.delete(cell.id)
@@ -159,6 +196,25 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
                 </div>
               )
             }),
+          )}
+
+          {/* Swap sides: on the top net post, half outside the court so it covers no play area.
+              The visible circle is 40px (52px on the big court); the button is at least 44px.
+              Above the game point glow and dim (z-20), so they never cover it. */}
+          {onSwapSides && controls && (
+            <button
+              type="button"
+              onClick={onSwapSides}
+              aria-label="Swap sides"
+              title="Swap sides"
+              className={`group absolute left-1/2 z-20 flex -translate-x-1/2 items-center justify-center ${size === 'lg' ? '-top-[30px] size-[52px]' : '-top-6 size-11'}`}
+            >
+              <span
+                className={`flex items-center justify-center rounded-full border-court bg-white text-ink group-active:opacity-80 ${size === 'lg' ? 'size-[52px] border-4' : 'size-10 border-[3px]'}`}
+              >
+                <SwapArrowsIcon size={size === 'lg' ? 24 : 18} />
+              </span>
+            </button>
           )}
 
           {/* Partner swap: on each outer edge, on the avatars' centre line, with a faint line from
@@ -207,6 +263,8 @@ export function Court({ court, byId, colors, onPick, onSwapPartners, crownedTeam
             {overlay}
           </div>
         )}
+        {glow && !overlay && <TeamGlow side={sideOf(court, glow.team)} color={TEAM_COLORS[colors[glow.team]]} fast={glow.fast} radius={size === 'lg' ? 24 : 18} />}
+        {toast}
       </div>
       {/* The referee sits at the bottom, at the net, facing the court: this matches what the
           person holding the phone (acting as umpire) sees, so screen left is their left. */}
@@ -225,14 +283,33 @@ type PlayerChipProps = {
   color: string
   serving: boolean
   receiving: boolean
-  crowned: boolean
   // Gets the name pill, whose net-facing end anchors the serve line.
   pillRef?: (el: HTMLSpanElement | null) => void
+  // Gets the shuttle (or the Change server button around it), where the serve line starts.
+  shuttleRef?: (el: HTMLElement | null) => void
   onClick?: () => void
+  // Before the first rally the server's shuttle is a "Change server" button.
+  onChangeServer?: () => void
 }
 
 // Chip geometry: an avatar circle inset 6px from the court's outer edge, and a name pill that
 // tucks `tuck` px under it. The partner swap button and its line sit on the avatars' centre line.
+// Game point glow on one half of the card: a 3px inner stroke plus a soft inner glow in the
+// team's colour. Above the toast's dim, below its pill.
+function TeamGlow({ side, color, fast, radius }: { side: SideKey; color: string; fast: boolean; radius: number }) {
+  const mix = (pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute inset-y-0 z-[19] w-1/2 ${side === 'left' ? 'left-0' : 'right-0'} ${fast ? 'gp-glow-fast' : 'gp-glow'}`}
+      style={{
+        borderRadius: side === 'left' ? `${radius}px 0 0 ${radius}px` : `0 ${radius}px ${radius}px 0`,
+        boxShadow: `inset 0 0 0 3px ${mix(95)}, inset 0 0 28px 6px ${mix(55)}`,
+      }}
+    />
+  )
+}
+
 type ChipSize = 'md' | 'lg'
 const CHIP_INSET = 6
 const CHIP = {
@@ -252,16 +329,29 @@ function pillStyle(c: (typeof CHIP)[ChipSize], right: boolean) {
   }
 }
 
-// Avatar ring: gold on the server, white on the receiver, a light team colour otherwise.
+// Avatar ring: green with a white halo on the server, white on the receiver, a light team
+// colour otherwise. (Gold now means "winner"; the serve line and shuttle button stay gold.)
+const SERVER_RING = '#23964F'
 function ringColor(color: string, serving: boolean, receiving: boolean) {
-  if (serving) return 'var(--color-serve)'
+  if (serving) return SERVER_RING
   if (receiving) return '#FFFFFF'
   return `color-mix(in srgb, ${color} 60%, white)`
 }
 
 // An initials avatar on the court's outer side, overlapping a name pill in the team colour that
 // runs towards the net. The right half is the mirror image.
-export function PlayerChip({ player, size = 'md', half, color, serving, receiving, crowned, pillRef, onClick }: PlayerChipProps) {
+export function PlayerChip({
+  player,
+  size = 'md',
+  half,
+  color,
+  serving,
+  receiving,
+  pillRef,
+  shuttleRef,
+  onClick,
+  onChangeServer,
+}: PlayerChipProps) {
   const { name } = player
   const c = CHIP[size]
   const right = half === 'right'
@@ -289,6 +379,7 @@ export function PlayerChip({ player, size = 'md', half, color, serving, receivin
             backgroundColor: avatar.bg,
             color: avatar.fg,
             borderColor: ringColor(color, serving, receiving),
+            boxShadow: serving ? '0 0 0 3px #FFFFFF' : undefined,
           }}
         >
           {initials(name)}
@@ -303,17 +394,36 @@ export function PlayerChip({ player, size = 'md', half, color, serving, receivin
           {name}
         </span>
       </button>
-      {/* Worn on the avatar's outer top corner. */}
-      {crowned && (
-        <Crown
-          className={`absolute -top-3.5 z-[2] ${right ? '-right-1.5 rotate-[18deg]' : '-left-1.5 -rotate-[18deg]'}`}
-        />
-      )}
       {/* Right after the pill, on the net side. */}
-      {serving && (
-        <Shuttle
-          className={`shrink-0 ${size === 'lg' ? `h-[35px] w-[27px] ${right ? 'mr-1.5' : 'ml-1.5'}` : right ? 'mr-1' : 'ml-1'}`}
-        />
+      {serving && onChangeServer && (
+        <button
+          ref={shuttleRef}
+          type="button"
+          onClick={onChangeServer}
+          aria-label="Change server"
+          title="Change server"
+          className={`relative flex shrink-0 items-center justify-center rounded-full border-2 border-serve bg-[rgba(20,26,38,0.35)] active:opacity-80 ${
+            size === 'lg' ? `size-[54px] ${right ? 'mr-2' : 'ml-2'}` : `size-10 ${right ? 'mr-1.5' : 'ml-1.5'}`
+          }`}
+        >
+          <Shuttle className={`shrink-0 ${size === 'lg' ? 'h-[35px] w-[27px]' : ''}`} />
+          <span
+            className={`absolute -right-1.5 -bottom-1.5 flex items-center justify-center rounded-full bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.3)] ${size === 'lg' ? 'size-[22px]' : 'size-5'}`}
+          >
+            <SwapArrowsIcon size={12} strokeWidth={2.8} />
+          </span>
+        </button>
+      )}
+      {/* During play the same circle, without the badge and not tappable. */}
+      {serving && !onChangeServer && (
+        <span
+          ref={shuttleRef}
+          className={`flex shrink-0 items-center justify-center rounded-full border-2 border-serve bg-[rgba(20,26,38,0.35)] ${
+            size === 'lg' ? `size-[54px] ${right ? 'mr-2' : 'ml-2'}` : `size-10 ${right ? 'mr-1.5' : 'ml-1.5'}`
+          }`}
+        >
+          <Shuttle className={`shrink-0 ${size === 'lg' ? 'h-[35px] w-[27px]' : ''}`} />
+        </span>
       )}
     </div>
   )

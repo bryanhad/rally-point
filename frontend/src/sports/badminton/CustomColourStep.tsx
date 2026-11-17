@@ -62,7 +62,7 @@ export function CustomColourStep({ titleId, name, autoColor, teamColor, initialH
       <div className="px-5 pt-[18px]" aria-hidden>
         <div className="flex items-center justify-between gap-3 rounded-[14px] bg-court-inner px-3 py-2">
           <div className="pointer-events-none min-w-0">
-            <PlayerChip player={preview} half="left" color={teamColor} serving={false} receiving={false} crowned={false} />
+            <PlayerChip player={preview} half="left" color={teamColor} serving={false} receiving={false} />
           </div>
           <span className="shrink-0 text-[11px] font-extrabold tracking-[0.18em] text-white/85">ON COURT</span>
         </div>

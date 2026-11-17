@@ -180,7 +180,7 @@ function NewSessionForm({
       <div className="relative mt-1 flex min-h-[132px] flex-[0_1_318px] flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div role="group" aria-label="Players for the new session" className="grid grid-cols-3 gap-x-1.5 gap-y-1 px-3 pt-1.5 pb-6">
-            <NewPlayerTile size="sm" onClick={() => setAdding(true)} />
+            <NewPlayerTile onClick={() => setAdding(true)} />
             {shown.map((p) => (
               <SelectTile key={p.id} player={p} selected={selected.has(p.id)} onToggle={() => toggle(p.id)} />
             ))}

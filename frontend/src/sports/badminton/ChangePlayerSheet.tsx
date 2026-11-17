@@ -1,11 +1,14 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { BottomSheet } from '../../components/ui/BottomSheet'
+import { ArrowRightIcon } from '../../components/ui/icons'
 import { Avatar } from './Avatar'
 import { NewPlayerDialog } from './NewPlayerDialog'
-import { FindPlayerInput, NewPlayerTile, NoMatch } from './PlayerGrid'
-import { filterPlayers, TILE_LG } from './playerList'
-import { sortByName, TEAM_IDS, type CourtState } from './game'
-import { TEAM_COLORS, TEAM_TINTS, type Config, type Player, type TeamId } from './schema'
+import { FindPlayerInput, NoMatch } from './PlayerGrid'
+import { filterPlayers } from './playerList'
+import { type CourtState } from './game'
+import { TEAM_COLORS, TEAM_TINTS, type Config, type Player, type Session, type TeamId } from './schema'
+import { FlameLegend, NewPlayerRow, SessionPlayerRow } from './SessionPlayerRow'
+import { byName, sessionStats } from './sessionStats'
 
 export type PickerTarget = { team: TeamId; slot: number }
 
@@ -13,8 +16,10 @@ type ChangePlayerSheetProps = {
   // The court slot being changed; null when closed.
   target: PickerTarget | null
   court: CourtState
-  // Saved players only; the defaults are added here.
-  saved: Player[]
+  // The running session; without one there's nobody to list (games are played in a session).
+  session: Session | null
+  // All saved players (current names and colours; new names must differ from all of them).
+  players: Player[]
   teamColors: Config['teamColors']
   onClose: () => void
   onPick: (playerId: string) => void
@@ -24,9 +29,18 @@ type ChangePlayerSheetProps = {
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-// "Change player": the player being replaced in the header, then everyone else in a fixed
-// order (A–Z), with the other on-court players tagged.
-export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, onPick, onCreate }: ChangePlayerSheetProps) {
+// "Change player": the current player → new swap strip, then the session players A–Z with their
+// game stats.
+export function ChangePlayerSheet({
+  target,
+  court,
+  session,
+  players,
+  teamColors,
+  onClose,
+  onPick,
+  onCreate,
+}: ChangePlayerSheetProps) {
   // Keep showing the last target (and who stood there) while the sheet slides away, so the
   // title doesn't change or blank out mid-animation.
   const currentId = target ? court.teams[target.team].ids[target.slot] : null
@@ -44,17 +58,26 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
     if (target) setQuery('')
   }
 
-  const players = sortByName(saved)
-  const current = players.find((p) => p.id === shown?.currentId)
   const team = shown?.team ?? 'a'
+  const current = players.find((p) => p.id === shown?.currentId)
   const teamName = `Team ${titleCase(teamColors[team])}`
   const teamHex = TEAM_COLORS[teamColors[team]]
   const teamEyebrow = (
-    <span className="flex items-center gap-1.5" style={{ color: TEAM_COLORS[teamColors[team]] }}>
-      <span className="size-2 rounded-full" style={{ backgroundColor: TEAM_COLORS[teamColors[team]] }} />
+    <span className="flex items-center gap-1.5" style={{ color: TEAM_TINTS[teamColors[team]].fg }}>
+      <span className="size-2 rounded-full" style={{ backgroundColor: teamHex }} />
       {teamName}
     </span>
   )
+  // Session players only (players join a session from its Edit players), A–Z, without the one
+  // being replaced. Stats count finished games only. No "won last game"
+  // here (no last result passed): only who played lately matters when changing a player.
+  const inProgress = { a: court.teams.a.ids, b: court.teams.b.ids }
+  const rows = session
+    ? byName(sessionStats(session, players, { inProgress })).filter((r) => r.player.id !== shown?.currentId)
+    : []
+  const [adding, setAdding] = useState(false)
+  const matches = new Set(filterPlayers(rows.map((r) => r.player), query))
+  const shownRows = rows.filter((r) => matches.has(r.player))
 
   return (
     <BottomSheet
@@ -63,137 +86,96 @@ export function ChangePlayerSheet({ target, court, saved, teamColors, onClose, o
       label={`Change player for ${teamName}`}
       eyebrow={teamEyebrow}
       title="Change player"
-      subtitle={
-        current ? (
-          <div className="flex items-center gap-2">
-            <span className="shrink-0 text-[13px] font-semibold text-muted">Replacing</span>
-            <span className="flex h-[34px] min-w-0 items-center gap-2 rounded-full bg-soft pr-3 pl-[3px]">
-              <span
-                className="flex shrink-0 rounded-full"
-                style={{ boxShadow: `0 0 0 2px var(--color-soft), 0 0 0 3.5px ${teamHex}` }}
-              >
-                <Avatar player={current} size={28} />
-              </span>
-              <span className="max-w-[160px] truncate text-[15px] font-extrabold">{current.name}</span>
-            </span>
-          </div>
-        ) : (
-          <div className="flex h-[34px] items-center text-[13px] font-semibold text-muted">Filling an empty spot</div>
-        )
-      }
       subheader={
-        <div className="px-4 pt-3">
-          <FindPlayerInput value={query} onChange={setQuery} />
-        </div>
+        <>
+          <div className="px-4 pt-3">
+            <SwapStrip current={current} teamHex={teamHex} teamTint={TEAM_TINTS[teamColors[team]].bg} />
+          </div>
+          <div className="px-4 pt-3">
+            <FindPlayerInput value={query} onChange={setQuery} />
+          </div>
+          <div className="flex items-baseline justify-between px-5 pt-3 pb-0">
+            <div className="text-[11px] font-extrabold tracking-[0.2em] text-muted">SESSION PLAYERS</div>
+            <div className="text-xs text-subtle">A–Z</div>
+          </div>
+        </>
       }
       fade
     >
-      <PlayerGrid
-        // The player being replaced is shown in the header, not in the grid.
-        players={players.filter((p) => p.id !== shown?.currentId)}
-        court={court}
-        teamColors={teamColors}
-        onPick={onPick}
-        query={query}
-        newPlayer={{ eyebrow: teamEyebrow, currentName: current?.name ?? '', onCreate }}
-      />
-    </BottomSheet>
-  )
-}
-
-function PlayerGrid({
-  players,
-  court,
-  teamColors,
-  onPick,
-  query,
-  newPlayer,
-}: {
-  players: Player[]
-  court: CourtState
-  teamColors: Config['teamColors']
-  onPick: (playerId: string) => void
-  query: string
-  newPlayer: { eyebrow: ReactNode; currentName: string; onCreate: (name: string, replace: boolean) => void }
-}) {
-  const [adding, setAdding] = useState(false)
-  const shown = filterPlayers(players, query)
-  const teamOf = (id: string) => TEAM_IDS.find((t) => court.teams[t].ids.includes(id))
-
-  return (
-    <div className="px-3 pt-2 pb-10">
-      <ul className="grid grid-cols-3 gap-x-2 gap-y-1.5">
+      <ul className="flex flex-col px-3 pt-2 pb-10">
         {/* Always first, also while filtering (the filter text becomes the starting name). */}
-        <li className="min-w-0">
-          <NewPlayerTile onClick={() => setAdding(true)} />
+        <li>
+          <NewPlayerRow
+            note={current ? `Puts them straight in for ${current.name}` : 'Puts them straight into this spot'}
+            onClick={() => setAdding(true)}
+          />
+          <FlameLegend />
         </li>
-        {shown.map((player) => {
-          const team = teamOf(player.id)
-          const teamColor = team ? teamColors[team] : null
-          return (
-            <li key={player.id} className="min-w-0">
-              <button
-                type="button"
-                onClick={() => onPick(player.id)}
-                aria-label={teamColor ? `${player.name}, on court for Team ${titleCase(teamColor)}` : undefined}
-                className={`${TILE_LG} active:bg-soft`}
-              >
-                <span
-                  className="flex rounded-full"
-                  style={{ boxShadow: teamColor ? `0 0 0 3px #fff, 0 0 0 5px ${TEAM_COLORS[teamColor]}` : undefined }}
-                >
-                  <Avatar player={player} size={60} />
-                </span>
-                <span
-                  className="max-w-full truncate text-sm font-bold text-ink"
-                >
-                  {player.name}
-                </span>
-                {/* Always 18px tall so the rows line up. */}
-                <span className="flex h-[18px] items-center">
-                  {teamColor && (
-                    <Tag style={{ backgroundColor: TEAM_TINTS[teamColor].bg, color: TEAM_TINTS[teamColor].fg }}>
-                      {`TEAM ${teamColor.toUpperCase()}`}
-                    </Tag>
-                  )}
-                </span>
-              </button>
-            </li>
-          )
-        })}
+        {shownRows.map((row) => (
+          <li key={row.player.id} className="mt-0.5">
+            <SessionPlayerRow
+              row={row}
+              teamColors={teamColors}
+              onClick={() => onPick(row.player.id)}
+            />
+          </li>
+        ))}
       </ul>
-      {shown.length === 0 && (
-        <NoMatch query={query} />
-      )}
+      {shownRows.length === 0 && query.trim() && <NoMatch query={query} />}
 
       <NewPlayerDialog
         open={adding}
         onClose={() => setAdding(false)}
         players={players}
         initialName={query.trim()}
-        eyebrow={newPlayer.eyebrow}
-        primaryLabel={newPlayer.currentName ? `Add & replace ${newPlayer.currentName}` : 'Add & put on court'}
+        eyebrow={teamEyebrow}
+        primaryLabel={current ? `Add & replace ${current.name}` : 'Add & put on court'}
         onPrimary={(name) => {
           setAdding(false)
-          newPlayer.onCreate(name, true)
+          onCreate(name, true)
         }}
         secondaryLabel="Just add to players"
         onSecondary={(name) => {
           setAdding(false)
-          newPlayer.onCreate(name, false)
+          onCreate(name, false)
         }}
       />
+    </BottomSheet>
+  )
+}
+
+// CURRENT player → NEW (still to pick).
+function SwapStrip({ current, teamHex, teamTint }: { current: Player | undefined; teamHex: string; teamTint: string }) {
+  return (
+    <div className="flex items-center justify-center gap-[22px] rounded-2xl bg-page px-3 pt-3.5 pb-3">
+      <div className="flex w-24 flex-col items-center gap-1.5">
+        {current ? (
+          <Avatar player={current} size={48} style={{ boxShadow: `0 0 0 2px var(--color-page), 0 0 0 4px ${teamHex}` }} />
+        ) : (
+          <span className="size-12 rounded-full border-2 border-dashed border-line-dashed bg-white" />
+        )}
+        <span className="max-w-full truncate text-[13px] font-bold">{current ? current.name : 'Empty spot'}</span>
+        <Pill style={{ backgroundColor: 'var(--color-line)', color: 'var(--color-ink-2)' }}>CURRENT</Pill>
+      </div>
+      <ArrowRightIcon className="mb-[26px] shrink-0 text-subtle" />
+      <div className="flex w-24 flex-col items-center gap-1.5">
+        <span
+          aria-hidden
+          className="flex size-12 items-center justify-center rounded-full border-2 border-dashed bg-white text-[22px] font-extrabold"
+          style={{ borderColor: teamHex, color: teamHex, boxShadow: `0 0 0 4px ${teamTint}` }}
+        >
+          ?
+        </span>
+        <span className="text-[13px] font-semibold text-subtle">Pick below</span>
+        <Pill style={{ backgroundColor: teamHex, color: '#FFFFFF' }}>NEW</Pill>
+      </div>
     </div>
   )
 }
 
-function Tag({ style, children }: { style?: CSSProperties; children: string }) {
+function Pill({ style, children }: { style?: CSSProperties; children: string }) {
   return (
-    <span
-      aria-hidden
-      className="flex h-[18px] items-center rounded-full px-2 text-[10px] font-extrabold tracking-[0.08em]"
-      style={style}
-    >
+    <span className="flex h-[18px] items-center rounded-full px-2 text-[10px] font-extrabold tracking-[0.1em]" style={style}>
       {children}
     </span>
   )

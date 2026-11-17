@@ -5,7 +5,7 @@ import { ConfirmDialog } from '../../components/ui/Dialog'
 import { TrashIcon } from '../../components/ui/icons'
 import { Button } from '../../components/ui/primitives'
 import { useBadminton } from './context'
-import { Crown } from './icons'
+import { Medal } from './icons'
 import type { HistoryEntry } from './schema'
 
 const dayFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
@@ -121,7 +121,7 @@ function HistoryCard({ entry, latest }: { entry: HistoryEntry; latest: boolean }
             >
               {side.players.map((p) => p.name).join(' & ')}
             </div>
-            {won && <Crown className="h-4 w-5" />}
+            {won && <Medal teamColor={side.color ?? fallback} onColor={false} className="h-[18px] w-[15px] shrink-0" />}
             <div
               className={`w-[30px] text-right text-xl tabular-nums ${strong ? 'font-extrabold text-ink' : 'font-semibold text-subtle'}`}
             >

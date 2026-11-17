@@ -11,6 +11,7 @@ import {
   UndoIcon,
   UserPlusIcon,
 } from '../../components/ui/icons'
+import { GamePointBadge, GamePointToast } from './GamePointToast'
 import { Avatar } from './Avatar'
 import { EMPTY_SLOT, screenScore, serverId, teamOn, type SideKey } from './game'
 import { TEAM_COLORS, type Player, type TeamId } from './schema'
@@ -48,9 +49,8 @@ export function ScoreboardTablet({ v, className = '' }: { v: ScoreboardView; cla
         <Link to="/" aria-label="Back to home" className={BAND_LINK}>
           <BackIcon size={24} />
         </Link>
-        <div className="shrink-0 px-2 text-[13px] font-extrabold tracking-[0.32em] tablet-portrait:hidden">
-          BADMINTON
-        </div>
+        <div aria-hidden className="w-1 shrink-0" />
+        <ModeSwitch mode={config.mode} onMode={v.onMode} size="tablet" />
         <div className="flex-1" />
         <SessionTile session={session} players={v.players} onClick={v.onOpenSession} wide />
         <RulesTile config={config} onClick={v.onOpenRules} wide />
@@ -71,11 +71,8 @@ export function ScoreboardTablet({ v, className = '' }: { v: ScoreboardView; cla
 
       {/* Everything under the band. A state's card is centred in this area. */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {/* Top row: match type, then the rallies strip and match history. The switch sits here,
-            away from Undo, so it isn't hit by mistake. */}
+        {/* Top row: the rallies strip and match history (the match type switch is in the band). */}
         <div inert={covered} className="flex shrink-0 items-center gap-3 px-6 pt-3.5">
-          <ModeSwitch mode={config.mode} onMode={v.onMode} size="tablet" />
-          <div className="mx-1 h-8 w-[1.5px] shrink-0 bg-line" />
           <h2 className="shrink-0 text-xs font-extrabold tracking-[0.12em] text-muted">RALLIES</h2>
           {v.rallies.length > 0 ? (
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto p-1 [scrollbar-width:none] [mask-image:linear-gradient(90deg,#000_88%,transparent)] [&::-webkit-scrollbar]:hidden">
@@ -103,13 +100,23 @@ export function ScoreboardTablet({ v, className = '' }: { v: ScoreboardView; cla
         </div>
 
         {/* Score blocks: the left block is the team on the left of the court. */}
-        <div className="flex min-h-0 flex-1 gap-5 px-6 pt-4 pb-5">
+        <div className="relative flex min-h-0 flex-1 gap-5 px-6 pt-4 pb-5">
           {SIDES.map((side) => {
             const team = teamOn(court, side)
             return (
               <ScoreBlock key={side} team={team} v={v} server={server} cover={cover} />
             )
           })}
+          {/* Game point toast over the top of the score area, no dim. With the Court preview
+              open it plays on that court instead. */}
+          {v.gamePoint?.toast && !v.courtOpen && (
+            <GamePointToast
+              key={v.gamePoint.toast.id}
+              toast={v.gamePoint.toast}
+              color={config.teamColors[v.gamePoint.team]}
+              className="inset-x-0 top-10"
+            />
+          )}
         </div>
 
         {/* Game actions: history controls on the left, reset/end on the right. */}
@@ -275,6 +282,7 @@ function ScoreBlock({ team, v, server, cover }: { team: TeamId; v: ScoreboardVie
   // Between games the court still holds last game's lineup at 0–0, so nobody is shown serving.
   const showServe = cover !== 'next-up' && cover !== 'no-session'
   const serverName = showServe && court.teams[team].ids.includes(server) ? v.byId.get(server)?.name : undefined
+  const gamePoint = v.gamePoint?.team === team
   return (
     <div
       className="relative flex min-h-0 min-w-0 flex-1 flex-col rounded-[28px] px-4 pb-4 text-white select-none has-[>.point:active]:opacity-90"
@@ -284,7 +292,7 @@ function ScoreBlock({ team, v, server, cover }: { team: TeamId; v: ScoreboardVie
         type="button"
         inert={cover !== null}
         onClick={() => v.onRally(team)}
-        aria-label={`Point to Team ${colorName(config, team)}${serverName ? `. ${serverName} serves next` : ''}`}
+        aria-label={`Point to Team ${colorName(config, team)}${gamePoint ? '. Game point' : ''}${serverName ? `. ${serverName} serves next` : ''}`}
         className="point absolute inset-0 rounded-[inherit]"
       />
       <span
@@ -299,6 +307,7 @@ function ScoreBlock({ team, v, server, cover }: { team: TeamId; v: ScoreboardVie
           {court.teams[team].score}
         </span>
       </span>
+      {gamePoint && <GamePointBadge size="lg" />}
       <span aria-hidden className="pointer-events-none relative mx-1 mb-3.5 h-0.5 shrink-0 self-stretch bg-white/28" />
       {/* Rows stay put for the whole game; only the white serve pill moves. The court ids swap
           places as the serving team wins points, but this screen shows no court, so positions

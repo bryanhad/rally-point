@@ -5,11 +5,13 @@ import { FrameCell, HeaderBand } from '../components/ui/HeaderBand'
 import { readLastSport } from '../lib/lastSport'
 import { newId } from '../lib/id'
 import { useBadminton } from '../sports/badminton/context'
-import { hasRallies, otherTeam, screenScore } from '../sports/badminton/game'
+import { hasRallies, otherTeam } from '../sports/badminton/game'
 import { HistorySheet } from '../sports/badminton/HistorySheet'
 import { NewSessionDialog, type NewSession } from '../sports/badminton/NewSessionDialog'
 import { BadmintonMark } from '../sports/badminton/icons'
-import { TEAM_COLORS, type Config, type HistoryEntry } from '../sports/badminton/schema'
+import { type Config, type HistoryEntry } from '../sports/badminton/schema'
+import { teamName } from '../sports/badminton/scoreboardView'
+import { TeamScorePair, type TeamScore } from '../sports/badminton/TeamScore'
 
 const LABEL = 'text-[13px] font-bold tracking-[0.06em] text-muted'
 const MODE_NAME = { singles: 'Singles', doubles: 'Doubles' } as const
@@ -65,13 +67,15 @@ export function HomePage() {
             aria-label="Game in progress"
             className="flex items-center gap-3 rounded-card bg-white p-3.5 shadow-[0_6px_20px_rgba(20,26,38,0.12)]"
           >
-            <FlipDigits
+            <TeamScorePair
               size="sm"
-              label={`Score ${screenScore(court)}`}
-              tiles={order.map((team) => ({
-                value: court.teams[team].score,
-                marker: TEAM_COLORS[config.teamColors[team]],
-              }))}
+              scores={
+                order.map((team) => ({
+                  color: config.teamColors[team],
+                  score: court.teams[team].score,
+                  name: teamName(config.teamColors[team]),
+                })) as [TeamScore, TeamScore]
+              }
             />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <div className="text-[11px] font-bold tracking-[0.2em] text-muted">IN PROGRESS</div>

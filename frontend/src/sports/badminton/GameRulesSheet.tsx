@@ -1,3 +1,4 @@
+import { gameWinner } from './rules'
 import { useState } from 'react'
 import { BottomSheet } from '../../components/ui/BottomSheet'
 import { digits } from '../../components/ui/digits'
@@ -38,11 +39,13 @@ function RulesForm({ onSaved }: { onSaved: () => void }) {
     config.sideSwitch.kind === 'every' ? config.sideSwitch.points : config.everyPoints,
   )
 
-  // Once a rally is played, the target must stay above the leading score, or the game
-  // would already be past its own end.
+  // Once a rally is played, a new target mustn't make the game already won (deuce rules: at
+  // least the target and 2 ahead). The current target always stays allowed, e.g. at 21–21 or
+  // after Keep playing.
   const topScore = Math.max(court.teams.a.score, court.teams.b.score)
-  const minPoints = hasRallies(game) ? topScore + 1 : 1
-  const valid = totalPoints >= minPoints
+  const scores = { a: court.teams.a.score, b: court.teams.b.score }
+  const allowed = (n: number) => !hasRallies(game) || n === config.totalPoints || gameWinner(scores, n) === null
+  const valid = allowed(totalPoints)
 
   function save() {
     if (!valid) return
@@ -86,7 +89,7 @@ function RulesForm({ onSaved }: { onSaved: () => void }) {
                   key={n}
                   type="button"
                   aria-pressed={selected}
-                  disabled={n < minPoints}
+                  disabled={!allowed(n)}
                   onClick={() => setTotalPoints(n)}
                   className={`h-10 rounded-[10px] border-[1.5px] text-sm disabled:border-line disabled:bg-softer disabled:text-disabled ${
                     selected

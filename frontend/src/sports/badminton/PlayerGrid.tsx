@@ -1,6 +1,6 @@
 import { CheckIcon, LockIcon, PlusIcon, SearchIcon } from '../../components/ui/icons'
 import { Avatar } from './Avatar'
-import { TILE_LG, TILE_SM } from './playerList'
+import { TILE_SM } from './playerList'
 import type { Player } from './schema'
 
 // Shared pieces of every player list (Manage players, Change player, Session players,
@@ -28,17 +28,13 @@ export function NoMatch({ query }: { query: string }) {
 }
 
 // Looks like a player tile, with a dashed + circle. Always first in the grid.
-export function NewPlayerTile({ size = 'lg', onClick }: { size?: 'lg' | 'sm'; onClick: () => void }) {
-  const lg = size === 'lg'
+export function NewPlayerTile({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`${lg ? TILE_LG : TILE_SM} text-band-ink active:bg-soft`}>
-      <span
-        className={`flex items-center justify-center rounded-full border-2 border-dashed border-[#9DB8D4] ${lg ? 'size-[60px]' : 'size-14'}`}
-      >
-        <PlusIcon size={lg ? 22 : 20} />
+    <button type="button" onClick={onClick} className={`${TILE_SM} text-band-ink active:bg-soft`}>
+      <span className="flex size-14 items-center justify-center rounded-full border-2 border-dashed border-[#9DB8D4]">
+        <PlusIcon size={20} />
       </span>
-      <span className={`font-bold ${lg ? 'text-sm' : 'text-[13px]'}`}>New player</span>
-      {lg && <span className="h-[18px]" />}
+      <span className="text-[13px] font-bold">New player</span>
     </button>
   )
 }

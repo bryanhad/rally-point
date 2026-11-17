@@ -4,8 +4,8 @@ import { AlertIcon, BackIcon, FlagIcon, GearIcon, RedoIcon, ResetIcon, TrophyIco
 import { Button } from '../../components/ui/primitives'
 import { initials } from './avatarStyle'
 import { Court } from './Court'
+import { GamePointBadge, GamePointToast } from './GamePointToast'
 import { EMPTY_SLOT, screenScore, teamOn, type SideKey } from './game'
-import { ServerIcon, SidesIcon } from './icons'
 import { TEAM_COLORS, type TeamId } from './schema'
 import { ModeSwitch, NoSessionOverlay, PickOverlay, RulesTile, SessionTile } from './ScoreboardParts'
 import { colorName, type ScoreboardView } from './scoreboardView'
@@ -25,7 +25,9 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
   return (
     <div className={`flex-1 flex-col ${className}`}>
       <HeaderBand
-        title="BADMINTON"
+        // The match type switch takes the title's place (Back and the court say where you are).
+        title={<ModeSwitch mode={config.mode} onMode={v.onMode} />}
+        spacing="tight"
         framed={false}
         left={
           <Link to="/" aria-label="Back to home" className={BAND_ICON_LINK}>
@@ -42,28 +44,22 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
         <RulesTile config={config} onClick={v.onOpenRules} />
       </HeaderBand>
 
-      <div className="flex flex-1 flex-col px-3 pt-2.5 pb-2">
-        {/* Court layout controls: match type on the left, side/serve swaps on the right */}
-        <div className="mb-2 flex h-11 shrink-0 items-center justify-between">
-          <ModeSwitch mode={config.mode} onMode={v.onMode} />
-          <div className="flex gap-1.5">
-            <Button aria-label="Swap player sides" icon={<SidesIcon />} label="Sides" onClick={v.onSides} />
-            <Button
-              aria-label="Swap server side"
-              icon={<ServerIcon />}
-              label="Server"
-              disabled={v.started}
-              onClick={v.onServer}
-            />
-          </div>
-        </div>
-
+      {/* pt leaves room for the ⇆ button sticking out above the court. */}
+      <div className="flex flex-1 flex-col px-3 pt-7 pb-2">
         <Court
           court={court}
           byId={v.byId}
           colors={config.teamColors}
           onPick={v.onPick}
           onSwapPartners={v.onSwapPartners}
+          onSwapSides={v.onSides}
+          onChangeServer={v.started ? undefined : v.onServer}
+          glow={v.gamePoint && { team: v.gamePoint.team, fast: !!v.gamePoint.toast }}
+          toast={
+            v.gamePoint?.toast && (
+              <GamePointToast key={v.gamePoint.toast.id} toast={v.gamePoint.toast} color={config.teamColors[v.gamePoint.team]} dim />
+            )
+          }
           overlay={
             !session ? (
               <NoSessionOverlay onStart={v.onNewSession} />
@@ -111,6 +107,7 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
         <div className="flex min-h-[60px] flex-1 gap-2.5">
           {SIDES.map((side) => {
             const team = teamOn(court, side)
+            const gamePoint = v.gamePoint?.team === team
             return (
               <button
                 key={side}
@@ -118,8 +115,8 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
                 onClick={() => v.onRally(team)}
                 // Without a session the tap opens New session instead.
                 disabled={session !== null && (v.pickPending || v.emptySpot)}
-                aria-label={`Point to Team ${colorName(config, team)}`}
-                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[22px] text-white select-none enabled:active:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={`Point to Team ${colorName(config, team)}${gamePoint ? '. Game point' : ''}`}
+                className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[22px] text-white select-none enabled:active:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ backgroundColor: TEAM_COLORS[config.teamColors[team]], containerType: 'size' }}
               >
                 <span
@@ -129,6 +126,7 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
                   {court.teams[team].score}
                 </span>
                 <span className="text-xs font-bold tracking-[0.14em] opacity-90">{teamInitials(team)}</span>
+                {gamePoint && <GamePointBadge />}
               </button>
             )
           })}
