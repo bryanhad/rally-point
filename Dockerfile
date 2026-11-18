@@ -25,7 +25,11 @@ COPY backend/ .
 # Replace the committed placeholder with the real build, then compile.
 RUN rm -rf web/dist
 COPY --from=frontend /app/dist ./web/dist
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/server .
+# The version comes from git outside Docker (scripts/version.sh): .git is not in the build context.
+ARG BACKEND_VERSION=dev
+RUN CGO_ENABLED=0 go build -trimpath \
+    -ldflags="-s -w -X main.version=${BACKEND_VERSION}" \
+    -o /out/server .
 
 # Stage 3: just the binary.
 FROM scratch

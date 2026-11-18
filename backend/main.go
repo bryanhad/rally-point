@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"log"
@@ -19,6 +20,13 @@ import (
 	"rally-point/web"
 )
 
+// Set at build time (see scripts/version.sh and the Dockerfile):
+//
+//	go build -ldflags "-X main.version=1.0.0"
+//
+// A plain `go run` or `go build` keeps this default.
+var version = "dev"
+
 func main() {
 	dist, err := web.Dist()
 	if err != nil {
@@ -28,7 +36,7 @@ func main() {
 	addr := ":" + getenv("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           gzhttp.GzipHandler(spaHandler(dist)),
+		Handler:           gzhttp.GzipHandler(newHandler(dist)),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -49,6 +57,27 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("shutdown: %v", err)
 	}
+}
+
+// newHandler routes /api/* to the backend and everything else to the frontend.
+func newHandler(frontend fs.FS) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/version", versionHandler)
+	// An unknown API path is a real 404, not the frontend's index.html.
+	mux.Handle("/api/", http.NotFoundHandler())
+	mux.Handle("/", spaHandler(frontend))
+	return mux
+}
+
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(map[string]string{"version": version})
 }
 
 // spaHandler serves files from fsys. A path that is not a file (an app route
