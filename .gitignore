@@ -1,0 +1,3 @@
+# The frontend build copied in by the Dockerfile; only the placeholder is committed.
+backend/web/dist/*
+!backend/web/dist/placeholder.txt

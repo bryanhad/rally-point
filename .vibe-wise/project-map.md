@@ -82,9 +82,11 @@ Unknown: who can access the app (single user vs anyone with link), auth, upload 
 - Current: bottom section = "Rallies" strip of score chips (`scoreAfter` in Scoreboard.tsx, newest left) → rally modal renders `Court` read-only (`onPick` omitted) with `crownedTeam`. Older: "Previous rally" (`RallyRow` of last rally step) + IconButtons: (Game log removed) Match history (Trophy + Clock) opens `HistoryList` modal.
 
 ## Build and Deployment
-- Docker: `frontend/Dockerfile` (node:24-alpine build with pnpm 10.33.0 → caddy:2-alpine serving /srv), `frontend/Caddyfile` ({$SITE_ADDRESS::80}, encode, immutable /assets/*, no-cache pages, try_files → index.html), `frontend/.dockerignore`, root `compose.yaml` (service web, ports 80/443/443udp, caddy_data/caddy_config volumes), `.env.example` (SITE_ADDRESS). Verified locally: deep links 200, cache headers, gzip.
+- Single root `Dockerfile` (3 stages: node+pnpm builds frontend -> golang:1.27-alpine embeds `dist` into `backend/web/dist` and compiles -> scratch with only the binary). Build context = repo root. `ARG VITE_GOATCOUNTER_URL` turns visitor counting on.
+- `backend/`: Go module `rally-point`; `main.go` (SPA fallback, cache headers, gzhttp, PORT env default 8080, SIGTERM shutdown); `web/` embeds `dist/` (only `placeholder.txt` committed).
+- `compose.yaml` (root): local test of the image on http://localhost:8080. HTTPS is NOT handled here.
+- VPS: sibling repo `~/Workspace/personal/vps-infra` (front Caddy owns 80/443, rally-web built from ../rally-point, GoatCounter). Deployment cut-over pending.
 - `cd frontend && pnpm dev` / `pnpm build` (vite build then tsc -b) / `pnpm lint` (oxlint).
-- Deployment target unknown.
 
 ## Unknowns
 - When the backend is introduced relative to the MVP.

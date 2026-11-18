@@ -1,0 +1,8 @@
+.git
+.vibe-wise
+ui-design
+**/.DS_Store
+**/node_modules
+frontend/dist
+frontend/.tanstack
+backend/web/dist

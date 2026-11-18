@@ -1,0 +1,2 @@
+Placeholder so the go:embed folder exists in a fresh checkout.
+The real frontend build is copied here by the Dockerfile.

@@ -1,20 +1,9 @@
+# Run the app image:  docker compose up --build
+# Then open http://localhost:8080. HTTPS is not handled here; a front proxy will own it.
 services:
   web:
-    build: ./frontend
+    build: .
     image: rally-point-web
     restart: unless-stopped
-    environment:
-      # Your domain for automatic HTTPS (DNS must point at this server), or ":80" for HTTP only.
-      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp" # HTTP/3
-    volumes:
-      # Keeps HTTPS certificates across restarts and redeploys.
-      - caddy_data:/data
-      - caddy_config:/config
-
-volumes:
-  caddy_data:
-  caddy_config:
+      - "8080:8080"
