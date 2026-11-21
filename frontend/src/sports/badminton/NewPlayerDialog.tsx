@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react'
 import { DialogShell } from '../../components/ui/Dialog'
 import { CloseIcon } from '../../components/ui/icons'
+import { ArrivedField } from './ArrivedField'
 import { Avatar } from './Avatar'
 import { avatarColorFor } from './avatarStyle'
 import { MAX_NAME_LENGTH, validateName } from './game'
@@ -16,11 +17,15 @@ type NewPlayerDialogProps = {
   // Small line above the title (the team, when opened from the picker).
   eyebrow?: ReactNode
   // Primary button label and action, e.g. "Add & replace wiliam" or "Add player".
+  // `joinedAfterGame`: the Arrived choice, when `arrival` is set.
   primaryLabel: string
-  onPrimary: (name: string) => void
+  onPrimary: (name: string, joinedAfterGame: number) => void
   // Optional text button under the primary one ("Just add to players").
   secondaryLabel?: string
-  onSecondary?: (name: string) => void
+  onSecondary?: (name: string, joinedAfterGame: number) => void
+  // Mid-session (the player also joins it): ask when they arrived. `games`: finished games so
+  // far (the field hides itself before the first one). Defaults to just now.
+  arrival?: { games: number }
 }
 
 // "New player" card stacked over the sheet that opened it. The avatar previews the initials and
@@ -53,11 +58,14 @@ function NewPlayerForm({
   onPrimary,
   secondaryLabel,
   onSecondary,
+  arrival,
 }: Omit<NewPlayerDialogProps, 'open'> & {
   titleId: string
   inputRef: RefObject<HTMLInputElement | null>
 }) {
   const [name, setName] = useState(initialName)
+  // Just now by default: backdating an arrival has to be a deliberate choice.
+  const [arrived, setArrived] = useState(arrival?.games ?? 0)
   const errorId = useId()
   const trimmed = name.trim()
   // Empty is just "not ready yet"; only real problems (duplicate) get a message.
@@ -66,7 +74,7 @@ function NewPlayerForm({
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (ready) onPrimary(trimmed)
+    if (ready) onPrimary(trimmed, arrived)
   }
 
   return (
@@ -90,9 +98,9 @@ function NewPlayerForm({
 
       <div className="flex justify-center" aria-hidden>
         {trimmed ? (
-          <Avatar player={{ name: trimmed, color: avatarColorFor(trimmed) }} size={96} />
+          <Avatar player={{ name: trimmed, color: avatarColorFor(trimmed) }} size={arrival ? 80 : 96} />
         ) : (
-          <span className="flex size-24 items-center justify-center rounded-full border-2 border-dashed border-line-dashed bg-[#F2F4F7] text-4xl font-extrabold text-faint">
+          <span className={`flex ${arrival ? 'size-20' : 'size-24'} items-center justify-center rounded-full border-2 border-dashed border-line-dashed bg-[#F2F4F7] text-4xl font-extrabold text-faint`}>
             ?
           </span>
         )}
@@ -125,6 +133,8 @@ function NewPlayerForm({
         )}
       </div>
 
+      {arrival && <ArrivedField games={arrival.games} value={arrived} onChange={setArrived} />}
+
       <div className="mt-0.5 flex flex-col gap-2">
         <button
           type="submit"
@@ -137,7 +147,7 @@ function NewPlayerForm({
           <button
             type="button"
             disabled={!ready}
-            onClick={() => onSecondary(trimmed)}
+            onClick={() => onSecondary(trimmed, arrived)}
             className="h-11 rounded-[14px] text-sm font-bold text-band-ink active:bg-soft disabled:text-faint"
           >
             {secondaryLabel}

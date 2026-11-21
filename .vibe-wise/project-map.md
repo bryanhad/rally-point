@@ -120,3 +120,8 @@ Unknown: who can access the app (single user vs anyone with link), auth, upload 
 - `src/lib/lastSport.ts`: `rally-point:last-sport` (z.enum SPORTS, nullable); written by Scoreboard on mount.
 - Game key adds `gameNumber` (default 1); reducer 'newGame' (after End game) increments; restart/setMode keep it.
 - HistorySheet owns the Clear ConfirmDialog (used by scoreboard and home). Config page and PlayersSheet reworked; Avatar is now a tone/size initials badge. Old Modal, PlayersModal, HistoryList and unused icons removed.
+
+## v7 data (step 1)
+- `rally-point:badminton:session-players` {rows: {sessionId, playerId, joinedAfterGame}} for all sessions (learner design; table-shaped for a future DB). Replaces session.playerIds (migrated with 0). UI `Session` type = stored session + members + playerIds (session.ts currentSession).
+- queue.ts `sessionOrder` (fairness order for Pick/Change/Current Session); rules.ts deuce (isDeuceTie, inDeuce, afterRally 'deuce'); view.ts + config.view ('referee'|'facing').
+- Vitest: `pnpm test`, *.test.ts next to the code.

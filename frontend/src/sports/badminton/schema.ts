@@ -9,6 +9,7 @@ export const PLAYERS_KEY = 'rally-point:badminton:players'
 export const CONFIG_KEY = 'rally-point:badminton:config'
 export const HISTORY_KEY = 'rally-point:badminton:history'
 export const SESSION_KEY = 'rally-point:badminton:session'
+export const SESSION_PLAYERS_KEY = 'rally-point:badminton:session-players'
 
 export const playerSchema = z.object({
   id: z.string().min(1),
@@ -91,21 +92,24 @@ const sessionGameSchema = z.object({
   players: z.array(playerSchema).min(1).max(4),
 })
 
-// One evening of play: who's here, and the games they've played. Game counts are derived from
-// `games`, not from match history, so clearing history can't wipe them.
+// One evening of play and the games played in it. Game counts are derived from `games`, not
+// from match history, so clearing history can't wipe them. Who's in it lives in
+// SESSION_PLAYERS_KEY. (Saves from before that key had a `playerIds` list here; it is read once
+// to fill the new key, then dropped.)
 export const sessionSchema = z.object({
   id: z.string().min(1),
   startedAt: z.number(), // epoch milliseconds
   // The mode it started in; the live mode is config.mode and can change during the session.
   mode: modeSchema,
-  // Who's in the session now. Players who played and were removed are "left".
-  playerIds: z.array(z.string().min(1)),
   // Oldest first.
   games: z.array(sessionGameSchema),
   // Last "Keep current session" on the 12-hour prompt; counts as activity.
   keptAt: z.number().optional(),
+  // When End session was tapped (epoch ms). Sessions ended by starting a new one (before End
+  // session existed) have none; their last game's end stands in.
+  endedAt: z.number().optional(),
 })
-export type Session = z.infer<typeof sessionSchema>
+export type StoredSession = z.infer<typeof sessionSchema>
 
 // Stored under SESSION_KEY. At most one running session; ended ones are kept for a later view.
 export const sessionsSchema = z.object({
@@ -115,9 +119,33 @@ export const sessionsSchema = z.object({
 })
 export type Sessions = z.infer<typeof sessionsSchema>
 
+// One player's place in one session (a table row: the key is sessionId + playerId). Players who
+// played and were removed have no row and show as "left". Removing deletes the row, so coming
+// back gets a new arrival.
+export const sessionPlayerSchema = z.object({
+  sessionId: z.string().min(1),
+  playerId: z.string().min(1),
+  // They arrived after this many finished games of the session: 0 = from the start.
+  joinedAfterGame: z.number().int().min(0),
+})
+export type SessionPlayer = z.infer<typeof sessionPlayerSchema>
+
+// Stored under SESSION_PLAYERS_KEY: the rows of every session, current and past.
+export const sessionPlayersSchema = z.object({
+  rows: z.array(sessionPlayerSchema),
+})
+
+// A session as the UI uses it: the stored session plus its players (in memory only).
+export type Session = StoredSession & {
+  members: SessionPlayer[]
+  // members' player ids, in the same order.
+  playerIds: string[]
+}
+
 // In memory the game, roster and sessions live together so one reducer keeps them in sync
 // (e.g. ending a game counts it for the session); they are saved to separate keys.
-export type GameState = z.infer<typeof storedGameSchema> & z.infer<typeof playersSchema> & { sessions: Sessions }
+export type GameState = z.infer<typeof storedGameSchema> &
+  z.infer<typeof playersSchema> & { sessions: Sessions; sessionPlayers: SessionPlayer[] }
 
 // Team colours. Stored by name so a shade can be tweaked here without invalidating saves.
 // No green: it would disappear against the court.
@@ -137,6 +165,14 @@ export const TEAM_TINTS: Record<TeamColor, { bg: string; fg: string }> = {
   purple: { bg: '#F1E9FC', fg: '#6B37B5' },
   slate: { bg: '#E9ECF1', fg: '#3A4458' },
 }
+// Each team colour lightened for dark backgrounds (the notification card's score chip).
+export const TEAM_ON_DARK: Record<TeamColor, string> = {
+  red: '#E8796F',
+  blue: '#7E9BF0',
+  orange: '#F0A56B',
+  purple: '#BC93EF',
+  slate: '#A3AEC2',
+}
 const teamColorSchema = z.enum(Object.keys(TEAM_COLORS) as [TeamColor, ...TeamColor[]])
 
 const sideSwitchSchema = z.discriminatedUnion('kind', [
@@ -146,6 +182,9 @@ const sideSwitchSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('half') }),
 ])
 export type SideSwitch = z.infer<typeof sideSwitchSchema>
+
+export const viewSchema = z.enum(['referee', 'facing'])
+export type CourtView = z.infer<typeof viewSchema>
 
 export const configSchema = z.object({
   totalPoints: z.number().int().min(1),
@@ -159,6 +198,9 @@ export const configSchema = z.object({
   teamColors: z
     .object({ a: teamColorSchema.catch('red'), b: teamColorSchema.catch('blue') })
     .default({ a: 'red', b: 'blue' }),
+  // How the court is drawn on this device: from the referee chair, or turned 180° for a scorer
+  // sitting opposite. A view only: no game data depends on it.
+  view: viewSchema.catch('referee'),
 })
 export type Config = z.infer<typeof configSchema>
 
@@ -203,6 +245,7 @@ export function defaultGame(): GameState {
     gameNumber: 1,
     awaitingPick: false,
     sessions: defaultSessions(),
+    sessionPlayers: [],
   }
 }
 
@@ -218,5 +261,6 @@ export function defaultConfig(): Config {
     mode: 'singles',
     everyPoints: 5,
     teamColors: { a: 'red', b: 'blue' },
+    view: 'referee',
   }
 }

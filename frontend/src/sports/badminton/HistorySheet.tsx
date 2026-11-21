@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import toast from 'react-hot-toast'
+import { notify } from '../../lib/notice'
 import { BottomSheet } from '../../components/ui/BottomSheet'
 import { ConfirmDialog } from '../../components/ui/Dialog'
 import { TrashIcon } from '../../components/ui/icons'
@@ -68,12 +68,14 @@ export function HistorySheet({ open, onClose }: HistorySheetProps) {
           deleted. This can&apos;t be undone.
         </>
       }
-      confirmLabel={`Clear ${games}`}
+      confirmLabel="Clear history"
+      confirmTone="danger"
       cancelLabel="Keep history"
       onConfirm={() => {
         clearHistory()
         setConfirming(false)
-        toast('Match history cleared')
+        // No Undo: clearing is final, so the warning is the dialog above; this only confirms.
+        notify({ kind: 'destructive', icon: 'trash', title: 'Match history cleared', subtitle: `${games} removed` })
       }}
       onCancel={() => setConfirming(false)}
     />

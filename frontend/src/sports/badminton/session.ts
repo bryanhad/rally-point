@@ -1,4 +1,47 @@
-import type { GameState, Player, Session } from './schema'
+import type { GameState, Player, Session, SessionPlayer, Sessions, StoredSession } from './schema'
+
+// --- Session players ----------------------------------------------------------
+
+// A stored session with its players attached, for the UI.
+export function withPlayers(session: StoredSession, rows: readonly SessionPlayer[]): Session {
+  const members = rows.filter((r) => r.sessionId === session.id)
+  return { ...session, members, playerIds: members.map((r) => r.playerId) }
+}
+
+// The running session with its players, or null.
+export function currentSession(state: Pick<GameState, 'sessions' | 'sessionPlayers'>): Session | null {
+  const current = state.sessions.current
+  return current ? withPlayers(current, state.sessionPlayers) : null
+}
+
+// Rows for saves from before SESSION_PLAYERS_KEY existed, built from each session's old
+// `playerIds`. Arrivals weren't recorded then, so everyone counts as there from the start.
+export function legacySessionPlayers(raw: unknown): SessionPlayer[] {
+  if (!raw || typeof raw !== 'object') return []
+  const { current, past } = raw as { current?: unknown; past?: unknown }
+  const sessions = [current, ...(Array.isArray(past) ? past : [])]
+  return sessions.flatMap((s) => {
+    if (!s || typeof s !== 'object') return []
+    const { id, playerIds } = s as { id?: unknown; playerIds?: unknown }
+    if (typeof id !== 'string' || !id || !Array.isArray(playerIds)) return []
+    return playerIds
+      .filter((p): p is string => typeof p === 'string' && p.length > 0)
+      .map((playerId) => ({ sessionId: id, playerId, joinedAfterGame: 0 }))
+  })
+}
+
+// Keeps rows that belong to a known session, once per (session, player): the session key can
+// reset on its own and must not leave players attached to nothing.
+export function cleanSessionPlayers(rows: readonly SessionPlayer[], sessions: Sessions): SessionPlayer[] {
+  const ids = new Set([sessions.current, ...sessions.past].flatMap((s) => (s ? [s.id] : [])))
+  const seen = new Set<string>()
+  return rows.filter((r) => {
+    const key = `${r.sessionId}\u0000${r.playerId}`
+    if (!ids.has(r.sessionId) || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
 
 // --- Game counts --------------------------------------------------------------
 
@@ -64,7 +107,7 @@ export function nextGameNumber(session: Session): number {
 const DAY = 24 * 60 * 60 * 1000
 
 // Whole calendar days between two times, in local time (so 23:50 → 00:10 is one day).
-function daysBetween(from: number, to: number): number {
+export function daysBetween(from: number, to: number): number {
   const start = new Date(from)
   const end = new Date(to)
   const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
@@ -74,6 +117,13 @@ function daysBetween(from: number, to: number): number {
 
 export function timeLabel(at: number): string {
   return new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
+// How long a session has run: "1h 40m", "35m".
+export function runningLabel(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60000))
+  const h = Math.floor(minutes / 60)
+  return h > 0 ? `${h}h ${minutes % 60}m` : `${minutes}m`
 }
 
 // "Today", "Yesterday", "3d ago" (2–6 days), then "12 Nov".

@@ -35,6 +35,10 @@ type BottomSheetProps = {
   fade?: boolean
   // Optional fixed footer under the scrolling body.
   footer?: ReactNode
+  // Opens taller: near the top of the screen on phones (40px gap), 88% in tablet portrait.
+  tall?: boolean
+  // false: no border under the subheader (it flows into the body, e.g. a card and a heading).
+  subheaderBorder?: boolean
   children: ReactNode
 }
 
@@ -43,7 +47,21 @@ type BottomSheetProps = {
 // down, the X button, tapping the overlay or Escape, all with the same animation. In tablet
 // landscape it's a 460px side sheet on the right edge instead: full height, slides in from the
 // right and closes with a swipe right.
-export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, actions, subheader, fade, footer, children }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onClose,
+  title,
+  label,
+  eyebrow,
+  subtitle,
+  actions,
+  subheader,
+  fade,
+  footer,
+  tall = false,
+  subheaderBorder = true,
+  children,
+}: BottomSheetProps) {
   const { mounted, shown } = usePresence(open, DURATION)
   const reduced = usePrefersReducedMotion()
   useScrollLock(mounted)
@@ -175,7 +193,7 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, ac
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : undefined)}
         tabIndex={-1}
-        className={`sheet-h relative flex w-full flex-col rounded-t-sheet bg-white outline-none tablet-portrait:w-[680px] tablet-portrait:max-w-full tablet-landscape:w-[460px] tablet-landscape:max-w-full tablet-landscape:rounded-tr-none tablet-landscape:rounded-bl-sheet tablet-landscape:pt-4 tablet-landscape:pr-[env(safe-area-inset-right)] tablet-landscape:shadow-[-12px_0_40px_rgba(14,18,26,0.25)]`}
+        className={`sheet-h ${tall ? 'sheet-h-tall' : ''} relative flex w-full flex-col rounded-t-sheet bg-white outline-none tablet-portrait:w-[680px] tablet-portrait:max-w-full tablet-landscape:w-[460px] tablet-landscape:max-w-full tablet-landscape:rounded-tr-none tablet-landscape:rounded-bl-sheet tablet-landscape:pt-4 tablet-landscape:pr-[env(safe-area-inset-right)] tablet-landscape:shadow-[-12px_0_40px_rgba(14,18,26,0.25)]`}
         style={{ transform, transition, opacity: reduced ? (visible ? 1 : 0) : 1 }}
       >
         {/* Side sheet: a short vertical grab bar on the left edge, in place of the top handle. */}
@@ -216,7 +234,7 @@ export function BottomSheet({ open, onClose, title, label, eyebrow, subtitle, ac
             </div>
           </div>
         </div>
-        {subheader && <div className="shrink-0 border-b border-soft pb-3">{subheader}</div>}
+        {subheader && <div className={`shrink-0 ${subheaderBorder ? 'border-b border-soft pb-3' : ''}`}>{subheader}</div>}
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {children}

@@ -1,8 +1,9 @@
 import { BottomSheet } from '../../components/ui/BottomSheet'
 import { BackIcon, ChevronRightIcon } from '../../components/ui/icons'
 import { Court } from './Court'
-import { otherTeam, type RallyStep } from './game'
-import { TEAM_COLORS, TEAM_TINTS, type Config, type Player, type TeamId } from './schema'
+import { otherTeam, teamOn, type RallyStep } from './game'
+import { TEAM_COLORS, TEAM_TINTS, type Config, type CourtView, type Player, type TeamId } from './schema'
+import { viewSide } from './view'
 import { teamName } from './scoreboardView'
 import { TeamScorePair, type TeamScore } from './TeamScore'
 
@@ -20,11 +21,13 @@ type RallySheetProps = {
   onClose: () => void
   byId: Map<string, Player>
   colors: Config['teamColors']
+  // Referee view / Facing referee, so the snapshot matches the live court.
+  view: CourtView
 }
 
 // Detail of one rally: who won it, the score after it, and the court as it was when it was
 // played. The footer steps to the previous / next rally.
-export function RallySheet({ open, rallies, number, onNavigate, onClose, byId, colors }: RallySheetProps) {
+export function RallySheet({ open, rallies, number, onNavigate, onClose, byId, colors, view }: RallySheetProps) {
   const shown = rallies.find((r) => r.number === number)
   const latest = rallies.at(-1)?.number ?? 0
   if (!shown) return null
@@ -33,7 +36,8 @@ export function RallySheet({ open, rallies, number, onNavigate, onClose, byId, c
   const winner = step.event.winner
   const winnerName = colors[winner].charAt(0).toUpperCase() + colors[winner].slice(1)
   // Scores in screen order after the rally, matching the rally chips.
-  const order: TeamId[] = [step.after.leftTeam, otherTeam(step.after.leftTeam)]
+  const left = teamOn(step.after, viewSide('left', view))
+  const order: TeamId[] = [left, otherTeam(left)]
   const prev = shown.number > 1 ? shown.number - 1 : null
   const next = shown.number < latest ? shown.number + 1 : null
 
@@ -97,7 +101,7 @@ export function RallySheet({ open, rallies, number, onNavigate, onClose, byId, c
       )}
       <div className="px-3 pb-2">
         {/* The court as it was when this rally was played (who served, who received). */}
-        <Court court={step.before} byId={byId} colors={colors} />
+        <Court court={step.before} byId={byId} colors={colors} view={view} />
       </div>
     </BottomSheet>
   )

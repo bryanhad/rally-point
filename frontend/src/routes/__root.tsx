@@ -1,5 +1,5 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { Toaster } from 'react-hot-toast'
+import { NoticeHost } from '../components/ui/NoticeHost'
 import { BadmintonProvider } from '../sports/badminton/BadmintonProvider'
 
 export const Route = createRootRoute({
@@ -16,26 +16,14 @@ function RootLayout() {
           side padding so header bands can reach the screen edges; the footer owns the bottom
           safe area. */}
       <div className="flex h-dvh flex-col bg-white text-slate-900">
-        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto bg-white">
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto bg-white">
           <Outlet />
         </main>
         <footer className="shrink-0 px-4 pt-1 pb-[max(6px,env(safe-area-inset-bottom))] text-center text-xs text-subtle">
           v{__APP_VERSION__} · Made by Bryan Hadinata
         </footer>
-        {/* Small dark pill at the top centre; explains actions like undo and switching sides. */}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 2000,
-            style: {
-              background: 'var(--color-ink)',
-              color: '#fff',
-              fontSize: '0.875rem',
-              borderRadius: '9999px',
-              padding: '6px 14px',
-            },
-          }}
-        />
+        {/* The one notification card (undo/redo, change ends, confirmations), over everything. */}
+        <NoticeHost />
       </div>
     </BadmintonProvider>
   )

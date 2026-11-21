@@ -1,132 +1,95 @@
+import { useNow } from '../../lib/useNow'
 import { BottomSheet } from '../../components/ui/BottomSheet'
-import { BarsIcon, CalendarIcon, ChevronRightIcon, PlusIcon, UserPlusIcon, UsersIcon } from '../../components/ui/icons'
-import { Avatar } from './Avatar'
-import { sortByName } from './game'
-import type { Player, Session } from './schema'
-import { sessionDateLabel } from './session'
+import { CalendarIcon, FlagIcon, PlusIcon, UserPlusIcon, UsersIcon } from '../../components/ui/icons'
+import { Racket, Rackets } from './icons'
+import { sessionOrder } from './queue'
+import type { Config, Player, Session, TeamId } from './schema'
+import { dayLabel, nextGameNumber, runningLabel, timeLabel } from './session'
+import { SessionPlayersList } from './SessionPlayersList'
 
 type SessionSheetProps = {
   open: boolean
   onClose: () => void
   session: Session | null
-  // Saved players, to show who's in the session.
+  // Saved players (current names and colours).
   players: readonly Player[]
+  // The current mode (it can change mid-session).
+  mode: Config['mode']
+  teamColors: Config['teamColors']
+  // The lineup of the game in progress; null between games (no ON COURT section then).
+  onCourt: Record<TeamId, readonly string[]> | null
   onManagePlayers: () => void
-  // Optional until their screens exist.
-  onEditPlayers?: () => void
-  onGameCounts?: () => void
-  onNewSession?: () => void
+  onEditPlayers: () => void
+  // Without a session: the prompt's New session.
+  onNewSession: () => void
+  // End session (asks first). A new session starts from home with its first match.
+  onEndSession: () => void
 }
 
-const CARD = 'rounded-[18px] bg-page'
-const CAPTION = 'text-[11px] font-extrabold tracking-[0.2em] text-muted'
-
-// "Saturday, 7 November 2026".
-function fullDate(at: number) {
-  const d = new Date(at)
-  const part = (o: Intl.DateTimeFormatOptions) => d.toLocaleDateString('en-GB', o)
-  return `${part({ weekday: 'long' })}, ${part({ day: 'numeric' })} ${part({ month: 'long' })} ${part({ year: 'numeric' })}`
-}
-
-// The running session (when it started, who's in it, game counts) or, without one, a prompt to
-// start one. Manage players (the saved roster) lives in the header either way.
+// The running session: a blue summary card (in progress, when it started, mode, games / players
+// / running time), then every session player in one list (waiting, just played, on court, left)
+// with their games, and Manage players / End session at the bottom. Without a session, a prompt
+// to start one.
 export function SessionSheet({
   open,
   onClose,
   session,
   players,
+  mode,
+  teamColors,
+  onCourt,
   onManagePlayers,
   onEditPlayers,
-  onGameCounts,
   onNewSession,
+  onEndSession,
 }: SessionSheetProps) {
-  const inSession = session ? sortByName(players.filter((p) => session.playerIds.includes(p.id))) : []
-  const games = session?.games.length ?? 0
+  const now = useNow(open && !!session)
+  const rows = session ? sessionOrder(session, players, 'session', { onCourt }) : []
+
+  const manage = (
+    <button
+      type="button"
+      onClick={onManagePlayers}
+      className="flex h-[50px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-soft text-sm font-bold text-ink active:opacity-75"
+    >
+      <UsersIcon size={16} />
+      Manage players
+    </button>
+  )
 
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
-      eyebrow="BADMINTON"
-      title="Session"
-      actions={
-        <button
-          type="button"
-          onClick={onManagePlayers}
-          className="flex h-11 items-center gap-1.5 rounded-control bg-soft px-3 text-[13px] font-bold text-ink active:opacity-75"
-        >
-          <UsersIcon />
-          Manage players
-        </button>
-      }
+      title="Current Session"
+      tall={!!session}
+      subheaderBorder={false}
+      subheader={session && <Summary session={session} mode={mode} now={now} onEditPlayers={onEditPlayers} />}
       footer={
-        session && (
-          <div className="border-t border-soft px-4 pt-3 pb-5">
+        <div className="flex gap-2.5 border-t border-soft px-4 pt-3 pb-5">
+          {manage}
+          {/* Outlined red, not solid: the solid red is the confirmation's. */}
+          {session && (
             <button
               type="button"
-              onClick={onNewSession}
-              className="flex h-[50px] w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-line-strong bg-white text-[15px] font-extrabold text-ink active:bg-soft"
+              onClick={onEndSession}
+              className="flex h-[50px] flex-1 items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#F3C4BF] bg-white text-sm font-extrabold text-danger active:bg-danger-soft"
             >
-              <PlusIcon size={18} />
-              New session
+              <FlagIcon size={18} />
+              End session
             </button>
-          </div>
-        )
+          )}
+        </div>
       }
     >
       {session ? (
-        <div className="flex flex-col gap-2.5 px-4 pt-[18px] pb-4">
-          <div className={`${CARD} flex flex-col gap-1 px-4 py-3.5`}>
-            <div className={CAPTION}>STARTED</div>
-            <div className="text-xl font-extrabold">{sessionDateLabel(session.startedAt)}</div>
-            <div className="text-[13px] text-muted">{fullDate(session.startedAt)}</div>
-          </div>
-
-          <div className={`${CARD} flex flex-col gap-2.5 py-3.5 pr-3 pl-4`}>
-            <div className={CAPTION}>PLAYERS</div>
-            <div className="flex items-center gap-2.5">
-              <div className="flex shrink-0" aria-hidden>
-                {inSession.slice(0, 4).map((p, i) => (
-                  <Avatar
-                    key={p.id}
-                    player={p}
-                    size={34}
-                    className={`border-[2.5px] border-page ${i > 0 ? '-ml-2.5' : ''}`}
-                  />
-                ))}
-              </div>
-              <div className="min-w-0 flex-1 truncate text-[15px] font-extrabold">
-                {inSession.length} {inSession.length === 1 ? 'player' : 'players'}
-              </div>
-              <button
-                type="button"
-                onClick={onEditPlayers}
-                aria-label="Edit players in this session"
-                className="flex h-10 shrink-0 items-center gap-1.5 rounded-control border-[1.5px] border-line-strong bg-white px-3 text-[13px] font-extrabold text-band-ink active:bg-soft"
-              >
-                <UserPlusIcon />
-                Edit
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onGameCounts}
-            className={`${CARD} flex items-center gap-3 py-3.5 pr-3 pl-4 text-left active:bg-soft`}
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-white text-band">
-              <BarsIcon />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-[15px] font-extrabold">Game counts</span>
-              <span className="text-[13px] text-muted">
-                {games} {games === 1 ? 'game' : 'games'} played this session
-              </span>
-            </span>
-            <ChevronRightIcon className="shrink-0 text-muted" />
-          </button>
-        </div>
+        <SessionPlayersList
+          entries={rows}
+          players={players}
+          query=""
+          teamColors={teamColors}
+          groupTitles={{ waiting: 'WAITING · UP NEXT', 'on-court': `ON COURT · GAME ${nextGameNumber(session)}` }}
+        />
       ) : (
         <div className="flex min-h-full flex-col items-center justify-center gap-3 px-7 pb-10 text-center">
           <span className="flex size-16 items-center justify-center rounded-[20px] bg-accent-soft text-band-ink">
@@ -147,5 +110,68 @@ export function SessionSheet({
         </div>
       )}
     </BottomSheet>
+  )
+}
+
+function Summary({
+  session,
+  mode,
+  now,
+  onEditPlayers,
+}: {
+  session: Session
+  mode: Config['mode']
+  now: number
+  onEditPlayers: () => void
+}) {
+  const stats = [
+    { value: String(session.games.length), label: session.games.length === 1 ? 'game' : 'games' },
+    // Active players: those who left have no row any more.
+    { value: String(session.members.length), label: session.members.length === 1 ? 'player' : 'players' },
+    { value: runningLabel(now - session.startedAt), label: 'running' },
+  ]
+  return (
+    <>
+      <div className="mx-4 mt-2.5 flex flex-col gap-3.5 rounded-[18px] bg-[#2268A6] px-4 pt-3.5 pb-4 text-white">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-[3px]">
+            <div className="flex items-center gap-[7px] text-[11px] font-extrabold tracking-[0.16em] text-white/80">
+              <span className="size-2 rounded-full bg-[#6EE7A0] shadow-[0_0_0_3px_rgba(110,231,160,0.25)]" />
+              IN PROGRESS
+            </div>
+            <div className="truncate text-lg font-extrabold">
+              {dayLabel(session.startedAt, now)} · started {timeLabel(session.startedAt)}
+            </div>
+          </div>
+          <span className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-full bg-white/16 px-2.5 text-[13px] font-extrabold">
+            {mode === 'singles' ? <Racket className="h-4 w-3" /> : <Rackets className="h-4 w-[18px]" />}
+            {mode === 'singles' ? 'Singles' : 'Doubles'}
+          </span>
+        </div>
+        <div className="flex gap-3.5">
+          {stats.map((s, i) => (
+            <div key={s.label} className="contents">
+              {i > 0 && <span aria-hidden className="w-px self-stretch bg-white/22" />}
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-[22px] leading-[1.1] font-extrabold tabular-nums">{s.value}</span>
+                <span className="text-xs font-bold text-white/75">{s.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-end justify-between px-5 pt-[18px] pb-1">
+        <h3 className="text-[17px] font-extrabold">Session players</h3>
+        <button
+          type="button"
+          onClick={onEditPlayers}
+          aria-label="Edit session players"
+          className="flex h-9 items-center gap-1.5 rounded-[10px] bg-soft px-3 text-[13px] font-extrabold text-band-ink active:opacity-75"
+        >
+          <UserPlusIcon />
+          Edit
+        </button>
+      </div>
+    </>
   )
 }

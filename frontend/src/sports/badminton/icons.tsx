@@ -79,20 +79,6 @@ export function Rackets({ className = '', strokeWidth = 2 }: { className?: strin
   )
 }
 
-// Sport mark for the home page: a racket and a shuttle, white line style.
-export function BadmintonMark({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" width="40" height="40" className={className} aria-hidden>
-      <g fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <ellipse cx="16" cy="16" rx="9" ry="11" transform="rotate(-35 16 16)" />
-        <path d="M22 24l14 14" />
-        <path d="M34 6l8 8-5 3-6-6z" />
-      </g>
-    </svg>
-  )
-}
-
-
 // Streak badge: orange flame with the number of games in a row.
 export function Flame({ count, className = '' }: { count: number; className?: string }) {
   return (

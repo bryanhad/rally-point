@@ -156,8 +156,13 @@ export function DialogButton({
   tone = 'soft',
   children,
   ...rest
-}: ComponentProps<'button'> & { tone?: 'ink' | 'soft' | 'primary' }) {
-  const tones = { ink: 'bg-ink text-white font-extrabold', soft: 'bg-soft text-ink font-bold', primary: 'bg-band text-white font-extrabold' }
+}: ComponentProps<'button'> & { tone?: 'ink' | 'soft' | 'primary' | 'danger' }) {
+  const tones = {
+    ink: 'bg-ink text-white font-extrabold',
+    soft: 'bg-soft text-ink font-bold',
+    primary: 'bg-band text-white font-extrabold',
+    danger: 'bg-danger text-white font-extrabold',
+  }
   return (
     <button
       type="button"
@@ -181,10 +186,12 @@ type ConfirmDialogProps = {
   // 'danger' shows the soft-red trash badge; 'neutral' a soft-blue badge with `icon`.
   tone?: 'danger' | 'neutral'
   icon?: ReactNode
+  // 'danger': a red confirm button, for what can't be undone (Clear history). Default dark slate.
+  confirmTone?: 'ink' | 'danger'
 }
 
 // Destructive (or consequential) confirmation. Focus starts on the safe button; Escape and
-// the overlay cancel. The confirm button is dark slate, not red.
+// the overlay cancel. The confirm button is dark slate, or red (confirmTone) when it can't be undone.
 export function ConfirmDialog({
   open,
   title,
@@ -195,6 +202,7 @@ export function ConfirmDialog({
   onCancel,
   tone = 'danger',
   icon,
+  confirmTone = 'ink',
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null)
   return (
@@ -209,7 +217,7 @@ export function ConfirmDialog({
       initialFocus={cancelRef}
       actions={
         <>
-          <DialogButton tone="ink" onClick={onConfirm}>
+          <DialogButton tone={confirmTone} onClick={onConfirm}>
             {confirmLabel}
           </DialogButton>
           <DialogButton ref={cancelRef} tone="soft" onClick={onCancel}>

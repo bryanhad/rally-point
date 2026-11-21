@@ -1,3 +1,4 @@
+import { AnimatedChipStrip } from '../../components/ui/AnimatedChipStrip'
 import { Link } from '@tanstack/react-router'
 import type { ComponentProps, ReactNode } from 'react'
 import {
@@ -11,12 +12,15 @@ import {
   UndoIcon,
   UserPlusIcon,
 } from '../../components/ui/icons'
-import { GamePointBadge, GamePointToast } from './GamePointToast'
+import { GamePointBadge, ScoreToast } from './ScoreToast'
 import { Avatar } from './Avatar'
+import { ViewChip } from './Court'
 import { EMPTY_SLOT, screenScore, serverId, teamOn, type SideKey } from './game'
 import { TEAM_COLORS, type Player, type TeamId } from './schema'
 import { ModeSwitch, RulesTile, SessionTile } from './ScoreboardParts'
-import { colorName, describeResult, type ScoreboardView } from './scoreboardView'
+import { colorName, describeResult, toastColors, type ScoreboardView } from './scoreboardView'
+import { viewSide } from './view'
+import { useCrossSlide } from './motion'
 
 const SIDES: SideKey[] = ['left', 'right']
 
@@ -29,7 +33,9 @@ const SERVE_GREEN = '#23964F'
 export function ScoreboardTablet({ v, className = '' }: { v: ScoreboardView; className?: string }) {
   const { court, config, session } = v
   const server = serverId(court)
-  const newestRally = v.rallies[0]?.number
+  // Score blocks left to right; they slide past each other whenever they change sides.
+  const order = SIDES.map((side) => teamOn(court, viewSide(side, v.view)))
+  const slideRef = useCrossSlide(order, { ...v.buttonSlide, onTop: 'a' })
   // A state covering the live screen (the band stays usable): no session, picking this game's
   // players, or an empty spot. Covered controls are inert: no taps, focus or screen reader.
   const cover: Cover = !session ? 'no-session' : v.pickPending ? 'next-up' : v.emptySpot ? 'empty-spot' : null
@@ -74,48 +80,46 @@ export function ScoreboardTablet({ v, className = '' }: { v: ScoreboardView; cla
         {/* Top row: the rallies strip and match history (the match type switch is in the band). */}
         <div inert={covered} className="flex shrink-0 items-center gap-3 px-6 pt-3.5">
           <h2 className="shrink-0 text-xs font-extrabold tracking-[0.12em] text-muted">RALLIES</h2>
-          {v.rallies.length > 0 ? (
-            <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto p-1 [scrollbar-width:none] [mask-image:linear-gradient(90deg,#000_88%,transparent)] [&::-webkit-scrollbar]:hidden">
-              {v.rallies.map(({ step, number }) => (
+          {/* Newest on the left: a new rally pops in, Undo pops it out. */}
+          <AnimatedChipStrip
+            empty={<p className="min-w-0 flex-1 truncate text-[15px] text-faint">Tap a team's score to log the first rally</p>}
+            gap={8}
+            className="min-w-0 flex-1 overflow-x-auto p-1 [scrollbar-width:none] [mask-image:linear-gradient(90deg,#000_88%,transparent)] [&::-webkit-scrollbar]:hidden"
+            items={v.rallies.map(({ step, number }) => ({
+              key: String(number),
+              render: (latest) => (
                 <button
-                  key={number}
                   type="button"
                   onClick={() => v.onOpenRally(number)}
-                  aria-label={`Rally ${number}: ${screenScore(step.after)}`}
-                  className={`flex h-11 min-w-[62px] shrink-0 items-center justify-center rounded-control px-3 text-base font-extrabold text-white tabular-nums active:opacity-80 ${
-                    number === newestRally ? 'shadow-[0_0_0_2px_#fff,0_0_0_4px_var(--color-ink)]' : ''
+                  aria-label={`Rally ${number}: ${screenScore(step.after, v.view)}`}
+                  className={`flex h-11 min-w-[62px] shrink-0 items-center justify-center rounded-control px-3 text-base font-extrabold text-white tabular-nums transition-shadow duration-[120ms] active:opacity-80 ${
+                    latest ? 'shadow-[0_0_0_2px_#fff,0_0_0_4px_var(--color-ink)]' : ''
                   }`}
                   style={{ backgroundColor: TEAM_COLORS[config.teamColors[step.event.winner]] }}
                 >
-                  {screenScore(step.after)}
+                  {screenScore(step.after, v.view)}
                 </button>
-              ))}
-            </div>
-          ) : (
-            <p className="min-w-0 flex-1 truncate text-[15px] text-faint">Tap a team's score to log the first rally</p>
-          )}
+              ),
+            }))}
+          />
+          {/* Only while Facing referee: explains the swapped blocks, and one tap flips back. */}
+          {v.view === 'facing' && <ViewChip view="facing" size="xl" onFlip={v.onFlipView} />}
           <TabletButton icon={<TrophyIcon size={18} />} className="gap-1.5 px-3.5 text-band-ink" onClick={v.onOpenHistory}>
             Match history
           </TabletButton>
         </div>
 
-        {/* Score blocks: the left block is the team on the left of the court. */}
+        {/* Score blocks: the left block is the team drawn on the left of the court (Facing
+            referee turns it, so the blocks swap too). */}
         <div className="relative flex min-h-0 flex-1 gap-5 px-6 pt-4 pb-5">
-          {SIDES.map((side) => {
-            const team = teamOn(court, side)
-            return (
-              <ScoreBlock key={side} team={team} v={v} server={server} cover={cover} />
-            )
-          })}
+          {order.map((team) => (
+            // Keyed by team, so each block keeps its team while it slides.
+            <ScoreBlock key={team} blockRef={slideRef(team)} team={team} v={v} server={server} cover={cover} />
+          ))}
           {/* Game point toast over the top of the score area, no dim. With the Court preview
               open it plays on that court instead. */}
-          {v.gamePoint?.toast && !v.courtOpen && (
-            <GamePointToast
-              key={v.gamePoint.toast.id}
-              toast={v.gamePoint.toast}
-              color={config.teamColors[v.gamePoint.team]}
-              className="inset-x-0 top-10"
-            />
+          {v.toast && !v.courtOpen && (
+            <ScoreToast key={v.toast.id} toast={v.toast} {...toastColors(v)} className="inset-x-0 top-10" />
           )}
         </div>
 
@@ -277,14 +281,27 @@ function TabletButton({
 // and the number and rows sit on top without catching taps, so an empty spot can be a real
 // button of its own (buttons can't be nested). The number is sized from the space it gets
 // (container query units), up to 320px (250px in portrait).
-function ScoreBlock({ team, v, server, cover }: { team: TeamId; v: ScoreboardView; server: string; cover: Cover }) {
+function ScoreBlock({
+  team,
+  v,
+  server,
+  cover,
+  blockRef,
+}: {
+  team: TeamId
+  v: ScoreboardView
+  server: string
+  cover: Cover
+  blockRef: (el: HTMLElement | null) => void
+}) {
   const { court, config } = v
   // Between games the court still holds last game's lineup at 0–0, so nobody is shown serving.
   const showServe = cover !== 'next-up' && cover !== 'no-session'
   const serverName = showServe && court.teams[team].ids.includes(server) ? v.byId.get(server)?.name : undefined
-  const gamePoint = v.gamePoint?.team === team
+  const gamePoint = v.gamePoint === team
   return (
     <div
+      ref={blockRef}
       className="relative flex min-h-0 min-w-0 flex-1 flex-col rounded-[28px] px-4 pb-4 text-white select-none has-[>.point:active]:opacity-90"
       style={{ backgroundColor: TEAM_COLORS[config.teamColors[team]] }}
     >
@@ -313,7 +330,8 @@ function ScoreBlock({ team, v, server, cover }: { team: TeamId; v: ScoreboardVie
           places as the serving team wins points, but this screen shows no court, so positions
           would only make the rows jump. Read from afar, the pill alone says who serves. */}
       <div className="pointer-events-none relative flex w-full shrink-0 flex-row gap-3 tablet-portrait:flex-col tablet-portrait:gap-3.5">
-        {fixedOrder(court.teams[team].ids, v.byId).map(({ id, slot }) => {
+        {/* Facing referee turns the court, so each block's players read in reverse. */}
+        {(v.view === 'facing' ? fixedOrder(court.teams[team].ids, v.byId).reverse() : fixedOrder(court.teams[team].ids, v.byId)).map(({ id, slot }) => {
           if (id !== EMPTY_SLOT) {
             const player = v.byId.get(id)
             return player ? <PlayerRow key={slot} player={player} serving={showServe && id === server} /> : <PlaceholderRow key={slot} />

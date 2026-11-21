@@ -2,6 +2,7 @@ import { newId } from '../../lib/id'
 import { avatarColorFor, lookFields, type PlayerLook } from './avatarStyle'
 import {
   type Config,
+  type CourtView,
   type GameEvent,
   type GameState,
   type HistoryEntry,
@@ -10,6 +11,7 @@ import {
   type TeamId,
   TEAM_COLORS,
 } from './schema'
+import { viewSide } from './view'
 
 export type SideKey = 'left' | 'right'
 export type CourtSide = 'right' | 'left' // a team's own service court, as they face the net
@@ -51,6 +53,12 @@ export type GameAction =
   | { type: 'startSession'; id: string; startedAt: number; mode: Config['mode']; playerIds: string[] }
   // Who's in the running session (late arrivals, people leaving).
   | { type: 'setSessionPlayers'; playerIds: string[] }
+  // One player joins the running session, having arrived after `joinedAfterGame` finished games
+  // (0: from the start; the games played so far: just now). Already in: nothing changes.
+  | { type: 'joinSession'; playerId: string; joinedAfterGame: number }
+  // End session: the running session moves to the past with its end time. A game in progress
+  // isn't finished, so it isn't saved (the court is cleared).
+  | { type: 'endSession'; at: number }
   // "Keep current session" on the 12-hour prompt.
   | { type: 'keepSession'; at: number }
   // Starts the game that was waiting for its players: with a new lineup (Pick players), or
@@ -69,6 +77,7 @@ const KEEPS_REDO: ReadonlySet<GameAction['type']> = new Set([
   'editPlayer',
   'deletePlayer',
   'setSessionPlayers',
+  'joinSession',
   'keepSession',
 ])
 
@@ -168,14 +177,12 @@ function applyAction(state: GameState, action: GameAction): GameState {
     }
     case 'deletePlayer': {
       // An on-court slot holding this player becomes empty during replay. They leave the
-      // session too; games they played keep their snapshot.
-      const current = state.sessions.current
+      // running session too; games they played keep their snapshot. Past sessions keep them.
+      const currentId = state.sessions.current?.id
       return {
         ...state,
         players: state.players.filter((p) => p.id !== action.id),
-        sessions: current
-          ? { ...state.sessions, current: { ...current, playerIds: current.playerIds.filter((id) => id !== action.id) } }
-          : state.sessions,
+        sessionPlayers: state.sessionPlayers.filter((r) => !(r.sessionId === currentId && r.playerId === action.id)),
       }
     }
     case 'startSession': {
@@ -192,11 +199,15 @@ function applyAction(state: GameState, action: GameAction): GameState {
             id: action.id,
             startedAt: action.startedAt,
             mode: action.mode,
-            playerIds: knownIds(state, action.playerIds),
             games: [],
           },
           past: current ? [current, ...past] : past,
         },
+        // Everyone picked for a new session is there from the start.
+        sessionPlayers: [
+          ...state.sessionPlayers,
+          ...knownIds(state, action.playerIds).map((playerId) => ({ sessionId: action.id, playerId, joinedAfterGame: 0 })),
+        ],
       }
     }
     case 'startGame': {
@@ -206,15 +217,45 @@ function applyAction(state: GameState, action: GameAction): GameState {
       if (lineup && (lineup.a.length !== size || lineup.b.length !== size)) return state
       return { ...state, start: lineup ? { ...state.start, lineup } : state.start, log: [], awaitingPick: false }
     }
+    case 'endSession': {
+      const { current, past } = state.sessions
+      if (!current) return state
+      return {
+        ...state,
+        log: [],
+        redoLog: null,
+        awaitingPick: false,
+        sessions: { current: null, past: [{ ...current, endedAt: action.at }, ...past] },
+      }
+    }
     case 'keepSession': {
       const current = state.sessions.current
       if (!current) return state
       return { ...state, sessions: { ...state.sessions, current: { ...current, keptAt: action.at } } }
     }
+    case 'joinSession': {
+      const current = state.sessions.current
+      if (!current || knownIds(state, [action.playerId]).length === 0) return state
+      if (state.sessionPlayers.some((r) => r.sessionId === current.id && r.playerId === action.playerId)) return state
+      // Clamped to the games played: an arrival can't be later than now.
+      const after = Math.min(Math.max(0, Math.floor(action.joinedAfterGame)), current.games.length)
+      return {
+        ...state,
+        sessionPlayers: [...state.sessionPlayers, { sessionId: current.id, playerId: action.playerId, joinedAfterGame: after }],
+      }
+    }
     case 'setSessionPlayers': {
       const current = state.sessions.current
       if (!current) return state
-      return { ...state, sessions: { ...state.sessions, current: { ...current, playerIds: knownIds(state, action.playerIds) } } }
+      // Players already in keep their row (and arrival); new ones arrive now, after the games
+      // played so far; anyone not listed loses their row.
+      const mine = new Map(
+        state.sessionPlayers.filter((r) => r.sessionId === current.id).map((r) => [r.playerId, r] as const),
+      )
+      const rows = knownIds(state, action.playerIds).map(
+        (playerId) => mine.get(playerId) ?? { sessionId: current.id, playerId, joinedAfterGame: current.games.length },
+      )
+      return { ...state, sessionPlayers: [...state.sessionPlayers.filter((r) => r.sessionId !== current.id), ...rows] }
     }
   }
 }
@@ -335,63 +376,11 @@ export function hasRallies(state: GameState): boolean {
 
 // --- Toast text -------------------------------------------------------------
 
-// Score as it reads on screen: left team first.
-export function screenScore(court: CourtState): string {
-  return `${court.teams[court.leftTeam].score}–${court.teams[otherTeam(court.leftTeam)].score}`
-}
-
-type NameOf = (id: string) => string
-
-// What undoing this log entry did, for a toast.
-export function describeUndo({ event, before, after }: LogStep, name: NameOf): string {
-  switch (event.type) {
-    case 'rally':
-      return `Undid rally, back to ${screenScore(before)}${event.swapEnds ? '. Sides switched back' : ''}`
-    case 'swapEnds':
-      return 'Undid switch sides'
-    case 'swapPartners': {
-      const [x, y] = before.teams[event.team].ids
-      return `${name(x)} and ${name(y)} swapped back`
-    }
-    case 'assignPlayer': {
-      const swap = swappedPair(event, before)
-      if (swap) return `${name(swap[0])} and ${name(swap[1])} swapped back`
-      const was = before.teams[event.team].ids[event.slot]
-      const put = name(after.teams[event.team].ids[event.slot])
-      if (was === EMPTY_SLOT) return `Took ${put} off court`
-      return `${put} changed back to ${name(was)}`
-    }
-  }
-}
-
-// For an assignPlayer that picked someone already on court: the two players who traded
-// places. Null for a plain replacement.
-function swappedPair(event: Extract<GameEvent, { type: 'assignPlayer' }>, before: CourtState) {
-  const onCourt = TEAM_IDS.some((t) => before.teams[t].ids.includes(event.playerId))
-  if (before.teams[event.team].ids[event.slot] === EMPTY_SLOT) return null
-  return onCourt ? ([before.teams[event.team].ids[event.slot], event.playerId] as const) : null
-}
-
-// What redoing this log entry did, for a toast.
-export function describeRedo({ event, before, after }: LogStep, name: NameOf): string {
-  switch (event.type) {
-    case 'rally':
-      return `Redid rally, ${screenScore(after)}${event.swapEnds ? '. Players switched sides' : ''}`
-    case 'swapEnds':
-      return 'Redid switch sides'
-    case 'swapPartners': {
-      const [x, y] = before.teams[event.team].ids
-      return `${name(x)} and ${name(y)} swapped again`
-    }
-    case 'assignPlayer': {
-      const swap = swappedPair(event, before)
-      if (swap) return `${name(swap[0])} and ${name(swap[1])} swapped again`
-      const was = before.teams[event.team].ids[event.slot]
-      const put = name(after.teams[event.team].ids[event.slot])
-      if (was === EMPTY_SLOT) return `Put ${put} back on court`
-      return `${name(was)} changed to ${put} again`
-    }
-  }
+// Score as it reads on screen: the team drawn on the left first (Facing referee turns the court,
+// so that's the right-hand team of the referee's view).
+export function screenScore(court: CourtState, view: CourtView = 'referee'): string {
+  const left = teamOn(court, viewSide('left', view))
+  return `${court.teams[left].score}–${court.teams[otherTeam(left)].score}`
 }
 
 // --- Players ----------------------------------------------------------------

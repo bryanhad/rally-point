@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 // Shared line icons (from the ui-design mockups). All use currentColor.
-type IconProps = { size?: number; className?: string }
+type IconProps = { size?: number; className?: string; strokeWidth?: number }
 
 function Svg({ size = 20, className, strokeWidth = 2, children }: IconProps & { strokeWidth?: number; children: ReactNode }) {
   return (
@@ -114,7 +114,7 @@ export const TrashIcon = ({ withLines = false, ...p }: IconProps & { withLines?:
   </Svg>
 )
 
-export const EditIcon = (p: IconProps & { strokeWidth?: number }) => (
+export const EditIcon = (p: IconProps) => (
   <Svg size={18} {...p}>
     <path d="M4 20h4L19 9l-4-4L4 16z" />
     <path d="M13 7l4 4" />
@@ -189,6 +189,13 @@ export const UsersIcon = (p: IconProps) => (
   </Svg>
 )
 
+// A play triangle (start / resume a game).
+export const PlayIcon = (p: IconProps) => (
+  <Svg size={18} strokeWidth={2.2} {...p}>
+    <path d="M7 4.5v15l12-7.5z" fill="currentColor" />
+  </Svg>
+)
+
 // Person with a plus: adding or removing people in a session.
 export const UserPlusIcon = (p: IconProps) => (
   <Svg size={16} strokeWidth={2.2} {...p}>
@@ -200,13 +207,6 @@ export const UserPlusIcon = (p: IconProps) => (
 )
 
 // Three bars: game counts.
-export const BarsIcon = (p: IconProps) => (
-  <Svg size={20} strokeWidth={2.2} {...p}>
-    <path d="M5 20V12" />
-    <path d="M12 20V5" />
-    <path d="M19 20v-9" />
-  </Svg>
-)
 
 export const CalendarIcon = (p: IconProps) => (
   <Svg size={30} {...p}>
@@ -228,5 +228,20 @@ export const LockIcon = (p: IconProps) => (
   <Svg size={10} strokeWidth={2.6} {...p}>
     <rect x="5" y="11" width="14" height="10" rx="2" />
     <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </Svg>
+)
+
+export const EyeIcon = (p: IconProps) => (
+  <Svg strokeWidth={2.2} {...p}>
+    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Svg>
+)
+
+// A circular arrow: "flip" / "turn around".
+export const RotateIcon = (p: IconProps) => (
+  <Svg size={15} strokeWidth={2.4} {...p}>
+    <path d="M20 12a8 8 0 1 1-2.4-5.7" />
+    <path d="M20 4v5h-5" />
   </Svg>
 )

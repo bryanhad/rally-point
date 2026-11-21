@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { ConfirmDialog, DialogShell } from '../../components/ui/Dialog'
 import { ClockIcon, CloseIcon, FlagIcon } from '../../components/ui/icons'
-import { dayLabel, sessionDateLabel } from './session'
+import { sessionDateLabel } from './session'
 import { sortByName } from './game'
 import { Racket, Rackets } from './icons'
 import { NewPlayerDialog } from './NewPlayerDialog'
@@ -18,6 +18,8 @@ type NewSessionDialogProps = {
   players: Player[]
   // The running session, if any: starting a new one ends it (after a confirmation).
   current: Session | null
+  // Its game in progress, for the confirmation's "isn't finished" line.
+  unfinished?: { number: number; score: string } | null
   // Preselected starting mode.
   mode: Config['mode']
   onStart: (session: NewSession) => void
@@ -51,6 +53,7 @@ function NewSessionForm({
   onClose,
   players,
   current,
+  unfinished,
   mode: initialMode,
   onStart,
   onCreatePlayer,
@@ -97,9 +100,6 @@ function NewSessionForm({
     // oxlint-disable-next-line react/purity -- only called from a click handler, not during render
     onStart({ startedAt: startedAt ?? Date.now(), mode, playerIds: ordered.filter((p) => selected.has(p.id)).map((p) => p.id) })
   }
-
-  // "tonight's" only for a session that started today.
-  const today = current ? dayLabel(current.startedAt) === 'Today' : false
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -217,27 +217,57 @@ function NewSessionForm({
       />
 
       {current && (
-        <ConfirmDialog
+        <NewSessionConfirm
           open={confirming}
-          tone="neutral"
-          icon={<FlagIcon size={26} />}
-          title="Start a new session?"
-          description={
-            <>
-              This ends {today ? "tonight's" : 'the current'} session (
-              <strong className="text-ink">
-                {plural(current.playerIds.length, 'player')}, {plural(current.games.length, 'game')}
-              </strong>
-              ). The current game is reset and everyone starts at 0. {today ? "Tonight's" : 'That'} session stays in
-              history.
-            </>
-          }
-          confirmLabel="End session & start new"
-          cancelLabel="Keep current session"
+          session={current}
+          unfinished={unfinished}
           onConfirm={start}
           onCancel={() => setConfirming(false)}
         />
       )}
     </div>
+  )
+}
+
+// "Start a new session?": starting one ends the running session (saved to history; a game in
+// progress isn't). Shown before New session from home, and by New session itself when a session
+// is still running.
+export function NewSessionConfirm({
+  open,
+  session,
+  unfinished,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean
+  session: Session
+  // A game in progress: its number and score as it reads on screen ("1–6").
+  unfinished?: { number: number; score: string } | null
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <ConfirmDialog
+      open={open}
+      tone="neutral"
+      icon={<FlagIcon size={26} />}
+      title="Start a new session?"
+      description={
+        <>
+          This ends the current session. Its <strong className="text-ink">{plural(session.games.length, 'game')}</strong> and{' '}
+          <strong className="text-ink">{plural(session.playerIds.length, 'player')}</strong> are saved to history.
+          {unfinished && (
+            <>
+              {' '}
+              Game {unfinished.number} ({unfinished.score}) isn&apos;t finished and won&apos;t be saved.
+            </>
+          )}
+        </>
+      }
+      confirmLabel="End & start new"
+      cancelLabel="Keep current session"
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
   )
 }

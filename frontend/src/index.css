@@ -58,13 +58,6 @@ body {
 .gp-toast[data-leaving] .gp-dim {
   animation: gp-fade-out 250ms ease-in forwards;
 }
-/* The team's half of the court: quick pulse with the toast, slower and softer after. */
-.gp-glow-fast {
-  animation: gp-glow 900ms ease-in-out infinite;
-}
-.gp-glow {
-  animation: gp-glow-soft 1.8s ease-in-out infinite;
-}
 
 @keyframes gp-fade-in {
   from { opacity: 0; }
@@ -100,21 +93,14 @@ body {
   60% { box-shadow: 0 0 0 14px rgba(242, 201, 76, 0), 0 0 22px rgba(242, 201, 76, 0.35), 0 12px 30px rgba(14, 18, 26, 0.35); }
   100% { box-shadow: var(--gp-halo); }
 }
-@keyframes gp-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-@keyframes gp-glow-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
-/* Reduced motion: no pop, unroll or pulses; the toast (with its dim) just fades, the glow is steady. */
+/* Reduced motion: no pop, unroll, swing, shake or pulses; the toast (with its dim) just fades.
+   The deuce rackets rest crossed with the spark showing. */
 @media (prefers-reduced-motion: reduce) {
-  .gp-toast *,
-  .gp-glow,
-  .gp-glow-fast {
+  .gp-toast * {
     animation: none !important;
+  }
+  .gp-toast .dc-spark {
+    opacity: 1;
   }
   .gp-toast {
     animation: gp-fade-in 200ms ease-out both;
@@ -122,4 +108,213 @@ body {
   .gp-toast[data-leaving] {
     animation: gp-fade-out 250ms ease-in forwards;
   }
+}
+
+/* View flip (motion.ts MOTION.flipHalf = 225ms per half): the court card turns over on its long
+   horizontal axis, lifting slightly while edge-on. The content switches at the edge-on moment. */
+.view-flip-out {
+  animation: view-flip-out 225ms cubic-bezier(0.5, 0, 0.9, 0.5) both;
+}
+.view-flip-in {
+  animation: view-flip-in 225ms cubic-bezier(0.1, 0.5, 0.5, 1) both;
+}
+@keyframes view-flip-out {
+  from {
+    transform: perspective(900px) rotateX(0deg) scale(1);
+    box-shadow: 0 0 0 rgba(14, 18, 26, 0);
+  }
+  to {
+    transform: perspective(900px) rotateX(90deg) scale(1.06);
+    box-shadow: 0 18px 24px rgba(14, 18, 26, 0.25);
+  }
+}
+@keyframes view-flip-in {
+  from {
+    transform: perspective(900px) rotateX(-90deg) scale(1.06);
+    box-shadow: 0 18px 24px rgba(14, 18, 26, 0.25);
+  }
+  to {
+    transform: perspective(900px) rotateX(0deg) scale(1);
+    box-shadow: 0 0 0 rgba(14, 18, 26, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-flip-out,
+  .view-flip-in {
+    animation: none;
+  }
+}
+
+/* DEUCE toast clash (ScoreToast.tsx). One timeline from the toast's start: the rackets appear
+   upright and apart (leaning out, pivoting on their handle ends), swing in speeding up (300ms
+   from 200ms), clash in an X at 500ms, recoil ~7° and settle. Gold sparks burst from the crossing
+   (0.6 → 1.18 → 1, fade) and flash once more; the pill shakes ±4px exactly at impact. At rest the
+   rackets are crossed and the spark shows (the reduced-motion look). */
+.dc-art {
+  animation: gp-fade-in 120ms 100ms ease-out both;
+}
+.dc-swing-left,
+.dc-swing-right,
+.dc-spark {
+  transform-box: view-box;
+}
+.dc-swing-left {
+  transform-origin: 32.6px 77.3px;
+  animation: dc-swing-left 700ms 200ms both;
+}
+.dc-swing-right {
+  transform-origin: 67.4px 77.3px;
+  animation: dc-swing-right 700ms 200ms both;
+}
+.dc-spark {
+  transform-origin: 0 0;
+  opacity: 0;
+  animation: dc-spark 700ms 200ms both;
+}
+.dc-shake {
+  animation: dc-shake 200ms 500ms linear both;
+}
+@keyframes dc-swing-left {
+  0% { transform: rotate(-56deg); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
+  42.9% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  52.9% { transform: rotate(-7deg); animation-timing-function: ease-in-out; }
+  67.1%, 100% { transform: rotate(0deg); }
+}
+@keyframes dc-swing-right {
+  0% { transform: rotate(56deg); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
+  42.9% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  52.9% { transform: rotate(7deg); animation-timing-function: ease-in-out; }
+  67.1%, 100% { transform: rotate(0deg); }
+}
+@keyframes dc-spark {
+  0%, 42.8% { opacity: 0; transform: scale(0.4); }
+  42.9% { opacity: 1; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.18); }
+  60% { opacity: 1; transform: scale(1); }
+  80% { opacity: 0; transform: scale(1.3); }
+  87% { opacity: 0.9; transform: scale(0.9); }
+  97%, 100% { opacity: 0; transform: scale(1.2); }
+}
+@keyframes dc-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* The shared 1.4s beat (CourtIndicators.tsx sets each element's delay from one epoch).
+   Deuce ring: 3px gradient ring around the court card; copies ripple out 8px on every side. The
+   ripple grows its inset (not a scale), so the distance is the same on all four sides. */
+.deuce-ring {
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  pointer-events: none;
+  border: 3px solid transparent;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0);
+}
+.deuce-ripple {
+  animation: deuce-ripple 1.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite both;
+}
+@keyframes deuce-ripple {
+  0% { inset: -3px; opacity: 0.95; }
+  40%, 100% { inset: -11px; border-radius: calc(var(--beat-r) + 8px); opacity: 0; }
+}
+/* Game point half: a wave travels inward from the team's stroke (border 3 → 22px, fading). */
+.gp-wave {
+  border: 3px solid;
+  animation: gp-wave 1.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite both;
+}
+@keyframes gp-wave {
+  0% { border-width: 3px; opacity: 0.9; }
+  55%, 100% { border-width: 22px; opacity: 0; }
+}
+/* Game point dot on the score button: ripples outward (0 → 10px). */
+.beat-dot {
+  box-shadow: 0 0 0 5px rgba(242, 201, 76, 0.35);
+  animation: beat-dot 1.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite both;
+}
+@keyframes beat-dot {
+  0% { box-shadow: 0 0 0 0 rgba(242, 201, 76, 0.8); }
+  55%, 100% { box-shadow: 0 0 0 10px rgba(242, 201, 76, 0); }
+}
+/* Reduced motion: a static ring, a static half stroke and a static dot. */
+@media (prefers-reduced-motion: reduce) {
+  .deuce-ripple,
+  .gp-wave {
+    display: none;
+  }
+  .beat-dot {
+    animation: none;
+  }
+}
+/* Pick players' active slot: a white ring and a soft white glow that breathes (1.6s), like the
+   serve indicator's halo but white. Reduced motion: the ring alone, still. */
+.pick-halo {
+  animation: pick-halo 1.6s ease-in-out infinite;
+}
+@keyframes pick-halo {
+  0%, 100% { box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 7px rgba(255, 255, 255, 0.35); }
+  50% { box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 11px rgba(255, 255, 255, 0.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick-halo {
+    animation: none;
+    box-shadow: 0 0 0 3px #FFFFFF;
+  }
+}
+/* Notification card (components/ui/NoticeHost.tsx). First card: drops in. A different event:
+   the old card fades out (120ms), then the new one fades up 6px (200ms, after it). Leaving: lifts
+   8px and fades (280ms). A merge bumps the count badge with a brief gold flash. Reduced motion:
+   opacity only, no bump. */
+.notice-drop {
+  animation: notice-drop 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes notice-drop {
+  from { opacity: 0; transform: translateY(-24px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.notice-out {
+  animation: notice-fade-out 120ms ease-in both;
+}
+@keyframes notice-fade-out {
+  to { opacity: 0; }
+}
+.notice-swap {
+  animation: notice-swap 200ms ease-out 120ms both;
+}
+@keyframes notice-swap {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.notice-leave {
+  animation: notice-leave 280ms ease-in both;
+}
+@keyframes notice-leave {
+  to { opacity: 0; transform: translateY(-8px); }
+}
+.notice-bump {
+  animation: notice-bump 300ms ease-out;
+}
+@keyframes notice-bump {
+  from { transform: scale(1.5); background-color: #f2c94c; }
+  to { transform: scale(1); background-color: #ffffff; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-drop,
+  .notice-swap {
+    animation-name: notice-fade-in;
+  }
+  .notice-leave {
+    animation-name: notice-fade-out;
+  }
+  .notice-bump {
+    animation: none;
+  }
+}
+@keyframes notice-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

@@ -51,6 +51,8 @@ export function usePrefersReducedMotion() {
 // The tablet-landscape layout, where bottom sheets become side sheets. Must match the
 // `tablet-landscape` custom variant in theme.css (CSS can't share values with TypeScript).
 export const TABLET_LANDSCAPE = '(width >= 1024px) and (height >= 600px)'
+// Any tablet layout. Must match the `tablet` custom variant in theme.css.
+export const TABLET = '(width >= 744px) and (height >= 600px)'
 
 // Background scroll lock shared by stacked overlays (a dialog over a sheet): only the last
 // one to close restores scrolling. The app scrolls inside <main>, so lock that too.

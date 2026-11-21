@@ -6,6 +6,7 @@ const LABELS: Record<ResetKey, string> = {
   game: 'Your game in progress',
   players: 'Your player list',
   sessions: 'Your session',
+  sessionPlayers: 'Session players',
   config: 'Your settings',
   history: 'Your match history',
 }

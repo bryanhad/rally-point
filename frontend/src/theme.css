@@ -47,6 +47,28 @@
   --color-flip-tile: #262d3b;
   --color-flip-digit: #f2c94c;
 
+  /* Accent: the shuttle's gold cork. Small details only (the cork in the mark, the dot on the
+     Singles/Doubles icons, the icon inside a blue button); never a large block, never under
+     white text. accent-text: gold text or icons on white (bright gold fails contrast).
+     (accent-soft above is the older light-blue tint, unrelated.) */
+  --color-accent: #f2c94c;
+  --color-accent-text: #8a6100;
+  /* Live: the green "ongoing" dot. */
+  --color-live: #2fa36b;
+  --color-live-text: #1e7a4c;
+
+  /* Notifications (components/ui/NoticeHost.tsx): the dark card, and per kind the icon tile
+     and its icon colour. */
+  --color-notice: #1e2636;
+  --color-notice-neutral: #c5cdda;
+  --color-notice-neutral-ink: #141a26;
+  --color-notice-attention: #f2c94c;
+  --color-notice-attention-ink: #3d2e00;
+  --color-notice-destructive: #f6c7c3;
+  --color-notice-destructive-ink: #7a1f1a;
+  --color-notice-positive: #bfe8cf;
+  --color-notice-positive-ink: #14532d;
+
   /* Court */
   --color-court: #2b7a55;
   --color-court-inner: #38966a;
@@ -86,6 +108,17 @@
   .sheet-h {
     height: 72vh;
     height: 72dvh;
+  }
+}
+/* Taller sheets (Current Session): up to 40px from the top on phones, 88% in tablet portrait. */
+.sheet-h-tall {
+  height: calc(100vh - 40px);
+  height: calc(100dvh - 40px);
+}
+@media (744px <= width < 1024px) and (height >= 600px) {
+  .sheet-h-tall {
+    height: 88vh;
+    height: 88dvh;
   }
 }
 @media (width >= 1024px) and (height >= 600px) {

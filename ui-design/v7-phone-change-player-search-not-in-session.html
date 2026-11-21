@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>v7 phone · Change player · exact match outside the session</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1F5F99}a:hover{color:#174A78}
+button,input{font-family:inherit}
+button{cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #141A26; position: relative; overflow: hidden">
+  <div style="background: #2268A6; height: 128px; border-radius: 0 0 26px 26px"></div>
+  <div style="position: absolute; left: 12px; right: 12px; top: 192px; height: 200px; border-radius: 18px; background: #427B5A"></div>
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(14,18,26,0.55)"></div>
+<div role="dialog" aria-modal="true" aria-label="Change player for Team Blue" style="position: absolute; left: 16px; right: 16px; top: 24px; bottom: 24px; background: #FFFFFF; border-radius: 24px; box-shadow: 0 20px 50px rgba(14,18,26,0.3); display: flex; flex-direction: column; overflow: hidden">
+    
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 12px 0 20px">
+      <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #2452B8"><span style="width: 8px; height: 8px; border-radius: 50%; background: #3E62D1"></span>TEAM BLUE</div><div style="font-size: 22px; font-weight: 800">Change player</div></div><button aria-label="Close" style="width: 44px; height: 44px; flex-shrink: 0; border: none; border-radius: 12px; background: #EEF1F5; color: #141A26; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button></div><div style="padding: 12px 16px 0"><div style="display: flex; align-items: center; justify-content: center; gap: 22px; padding: 14px 12px 12px; border-radius: 16px; background: #F5F7FA">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 96px"><span style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; background: #EAE2FB; color: #5B3BA8; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #F5F7FA, 0 0 0 4px #3E62D1">W</span><span style="font-size: 13px; font-weight: 700">wiliam</span><span style="height: 18px; padding: 0 8px; border-radius: 999px; background: #E3E7EE; color: #3A4458; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; display: flex; align-items: center">CURRENT</span></div>
+  <div style="margin-bottom: 26px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; width: 96px"><span aria-hidden="true" style="width: 48px; height: 48px; border-radius: 50%; border: 2px dashed #3E62D1; background: #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 4px #EEF3FC; color: #3E62D1; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center">?</span><span style="font-size: 13px; font-weight: 600; color: #8A93A6">Pick below</span><span style="height: 18px; padding: 0 8px; border-radius: 999px; background: #3E62D1; color: #FFFFFF; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; display: flex; align-items: center">NEW</span></div>
+</div></div>
+    <div style="flex-shrink: 0; padding: 12px 16px 6px; position: relative"><label for="cpFilter" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Find a player</label><svg style="position: absolute; left: 30px; top: 25px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input id="cpFilter" placeholder="Find a player" value="maria" style="width: 100%; height: 44px; box-sizing: border-box; border: none; border-radius: 14px; padding: 0 44px 0 42px; font-size: 16px; font-family: inherit; color: #141A26; background: #F2F4F7"><button aria-label="Clear search" style="position: absolute; right: 26px; top: 22px; width: 24px; height: 24px; border: none; border-radius: 50%; background: #C5CBD6; color: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button></div>
+    
+    <div style="flex: 1; min-height: 0; position: relative; overflow: auto">
+      <div role="list" style="padding: 0 12px 24px; display: flex; flex-direction: column">
+<div role="group" aria-label="Not In Session" style="margin: 8px -12px 0"><div style="position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 22px; background: #EEF0F3; border-top: 1px solid #5A647822; border-bottom: 1px solid #5A647822"><span style="font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: #5A6478">NOT IN SESSION</span><span style="font-size: 12px; font-weight: 800; color: #5A6478; opacity: 0.7; font-variant-numeric: tabular-nums">1</span></div><div style="padding: 0 12px"><div role="listitem" aria-label="maria, not in this session. Tap to add" style="position: relative; background: transparent; border-radius: 0; margin-top: 0; display: flex; align-items: center; gap: 12px; padding: 9px 10px; color: #141A26"><span style="position: relative; flex-shrink: 0; display: flex; margin-right: 4px"><span style="width: 44px; height: 44px; border-radius: 50%; background: #F3E3FA; color: #7A2E9A; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; opacity: 0.75">M</span></span><span style="flex: 1; min-width: 0; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">maria</span><span aria-hidden="true" style="width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; border: 1.5px dashed #9DB8D4; color: #1F5F99; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span></div></div></div>
+      </div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: linear-gradient(rgba(255,255,255,0), #FFFFFF); pointer-events: none"></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

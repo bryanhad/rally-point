@@ -4,18 +4,21 @@ import { loadStored, readStored, saveStored } from '../../lib/storage'
 import { avatarColorFor } from './avatarStyle'
 import { BadmintonContext, type ResetKey } from './context'
 import { fixTeamColors, gameReducer, repairGame, replay } from './game'
+import { cleanSessionPlayers, legacySessionPlayers } from './session'
 import {
   CONFIG_KEY,
   GAME_KEY,
   HISTORY_KEY,
   PLAYERS_KEY,
   SESSION_KEY,
+  SESSION_PLAYERS_KEY,
   configSchema,
   defaultConfig,
   defaultGame,
   defaultHistory,
   defaultSessions,
   sessionsSchema,
+  sessionPlayersSchema,
   historySchema,
   playerSchema,
   playersSchema,
@@ -36,6 +39,15 @@ function readLegacyPlayers(): Player[] {
   }
 }
 
+// Before SESSION_PLAYERS_KEY, each session listed its players in `playerIds`.
+function readLegacySessionPlayers() {
+  try {
+    return legacySessionPlayers(JSON.parse(readStored(SESSION_KEY) ?? 'null'))
+  } catch {
+    return []
+  }
+}
+
 function loadInitial() {
   const game = loadStored(GAME_KEY, storedGameSchema, () => {
     const { start, log, redoLog, gameNumber, awaitingPick } = defaultGame()
@@ -45,6 +57,13 @@ function loadInitial() {
   const config = loadStored(CONFIG_KEY, configSchema, defaultConfig)
   const history = loadStored(HISTORY_KEY, historySchema, defaultHistory)
   const sessions = loadStored(SESSION_KEY, sessionsSchema, defaultSessions)
+  const sessionPlayers = loadStored(SESSION_PLAYERS_KEY, sessionPlayersSchema, () => ({ rows: [] }))
+  // Filled from the old `playerIds` the first time; the save effect below writes it, and the
+  // session key is saved without `playerIds` from then on.
+  const rows = cleanSessionPlayers(
+    sessionPlayers.status === 'missing' ? readLegacySessionPlayers() : sessionPlayers.value.rows,
+    sessions.value,
+  )
 
   // Players saved before avatar colours existed get one from their name now, and players saved
   // before colour modes existed parse as auto (playerSchema). The save effect below writes both
@@ -58,12 +77,13 @@ function loadInitial() {
   if (game.status === 'reset') reset.push('game')
   if (roster.status === 'reset') reset.push('players')
   if (sessions.status === 'reset') reset.push('sessions')
+  if (sessionPlayers.status === 'reset') reset.push('sessionPlayers')
   if (config.status === 'reset') reset.push('config')
   if (history.status === 'reset') reset.push('history')
 
   return {
     // On-court ids missing from the roster fall back to free defaults.
-    game: repairGame({ ...game.value, players, sessions: sessions.value }, config.value.mode),
+    game: repairGame({ ...game.value, players, sessions: sessions.value, sessionPlayers: rows }, config.value.mode),
     config: { ...config.value, teamColors: fixTeamColors(config.value.teamColors) },
     history: history.value,
     reset,
@@ -97,6 +117,7 @@ export function BadmintonProvider({ children }: { children: ReactNode }) {
   )
   useEffect(() => saveStored(PLAYERS_KEY, { players: game.players }), [game.players])
   useEffect(() => saveStored(SESSION_KEY, game.sessions), [game.sessions])
+  useEffect(() => saveStored(SESSION_PLAYERS_KEY, { rows: game.sessionPlayers }), [game.sessionPlayers])
   useEffect(() => saveStored(CONFIG_KEY, config), [config])
   useEffect(() => saveStored(HISTORY_KEY, history), [history])
 

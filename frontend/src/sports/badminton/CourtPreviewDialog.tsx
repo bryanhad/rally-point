@@ -2,8 +2,8 @@ import { useId } from 'react'
 import { DialogShell } from '../../components/ui/Dialog'
 import { CloseIcon } from '../../components/ui/icons'
 import { Court } from './Court'
-import { GamePointToast } from './GamePointToast'
-import type { ScoreboardView } from './scoreboardView'
+import { ScoreToast } from './ScoreToast'
+import { toastColors, type ScoreboardView } from './scoreboardView'
 
 // Tablet only: the court diagram and its actions, which the B2 main screen leaves out. Opened
 // from the band's Court button over the darkened scoreboard. Tapping a chip opens Change player
@@ -18,7 +18,7 @@ export function CourtPreviewDialog({ open, onClose, v }: { open: boolean; onClos
       width="max-w-[min(948px,calc(100vw-48px))]"
       backdrop="rgba(20,26,38,0.62)"
       // Scrolls inside when the screen is shorter than the card.
-      className="max-h-[calc(100dvh-48px)] gap-4 overflow-y-auto rounded-[28px]! px-6 pt-5 pb-6"
+      className="max-h-[calc(100dvh-48px)] gap-4 overflow-x-hidden overflow-y-auto rounded-[28px]! px-6 pt-5 pb-6"
     >
       <div className="flex items-center justify-between">
         <h2 id={titleId} className="text-xl font-extrabold">
@@ -40,16 +40,20 @@ export function CourtPreviewDialog({ open, onClose, v }: { open: boolean; onClos
         colors={v.config.teamColors}
         size="lg"
         onPick={v.onPick}
+        // Next up: the Next up card is the action, so empty spots stay quiet here.
+        spotlight={!v.pickPending}
         onSwapPartners={v.onSwapPartners}
         onSwapSides={v.onSides}
         onChangeServer={v.started ? undefined : v.onServer}
-        // Game point: the team's half glows, and the toast (with its dim) plays on this court.
-        glow={v.gamePoint && { team: v.gamePoint.team, fast: !!v.gamePoint.toast }}
-        toast={
-          v.gamePoint?.toast && (
-            <GamePointToast key={v.gamePoint.toast.id} toast={v.gamePoint.toast} color={v.config.teamColors[v.gamePoint.team]} dim />
-          )
-        }
+        view={v.courtView}
+        chipView={v.view}
+        motion={v.courtMotion}
+        flip={v.flip}
+        onFlipView={v.onFlipView}
+        // Game point / deuce indicators, and the toast (with its dim) plays on this court.
+        gamePoint={v.gamePoint}
+        deuce={v.deuce}
+        toast={v.toast && <ScoreToast key={v.toast.id} toast={v.toast} {...toastColors(v)} dim />}
       />
 
       {/* Two lines tall either way, so the card keeps its height when the swap line goes. */}

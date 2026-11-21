@@ -1,5 +1,6 @@
-import { EMPTY_SLOT, TEAM_IDS } from './game'
-import type { TeamId } from './schema'
+import { EMPTY_SLOT, screenRow, TEAM_IDS, teamOn, type CourtState } from './game'
+import type { CourtView, TeamId } from './schema'
+import { viewRow, viewSide } from './view'
 
 // Pick mode: filling the court's slots for the next game. Pure, so the rules are easy to test.
 
@@ -9,16 +10,29 @@ export type PickAction =
   | { type: 'tapSlot'; at: SlotRef }
   | { type: 'clear'; at: SlotRef }
   | { type: 'tapPlayer'; id: string }
+  // The fill order changed (the view flipped): start again from its first empty slot.
+  | { type: 'reorder' }
 
-// Slot order for "the next empty slot": the first team's slots, then the other team's.
-export function slotOrder(size: number, first: TeamId): SlotRef[] {
-  const teams = first === TEAM_IDS[0] ? TEAM_IDS : [...TEAM_IDS].reverse()
-  return teams.flatMap((team) => Array.from({ length: size }, (_, slot) => ({ team, slot })))
+// Slot order as drawn on screen, in either view: top-left, bottom-left (the team on the left),
+// then top-right, bottom-right. `court` gives the ends and the serve (positions at 0–0).
+export function screenOrder(court: CourtState, size: number, view: CourtView): SlotRef[] {
+  const placed: CourtState = {
+    ...court,
+    teams: { a: { score: 0, ids: Array(size).fill(EMPTY_SLOT) }, b: { score: 0, ids: Array(size).fill(EMPTY_SLOT) } },
+  }
+  const rank = { top: 0, bottom: 1 }
+  return (['left', 'right'] as const).flatMap((half) => {
+    const team = teamOn(court, viewSide(half, view))
+    return Array.from({ length: size }, (_, slot) => ({ team, slot })).sort(
+      (x, y) => rank[viewRow(screenRow(placed, team, x.slot), view)] - rank[viewRow(screenRow(placed, team, y.slot), view)],
+    )
+  })
 }
 
-export function initialPick(size: number, first: TeamId): PickState {
+// Empty slots; the first slot in `order` is active.
+export function initialPick(size: number, order: SlotRef[]): PickState {
   const empty = () => Array.from({ length: size }, () => EMPTY_SLOT)
-  return { slots: { a: empty(), b: empty() }, active: slotOrder(size, first)[0] }
+  return { slots: { a: empty(), b: empty() }, active: order[0] }
 }
 
 export const isFull = (s: PickState) => TEAM_IDS.every((t) => s.slots[t].every((id) => id !== EMPTY_SLOT))
@@ -48,6 +62,8 @@ export function pickReducer(s: PickState, action: PickAction, order: SlotRef[]):
     case 'clear':
       slots[action.at.team][action.at.slot] = EMPTY_SLOT
       return { slots, active: action.at }
+    case 'reorder':
+      return nextActive(s, order)
     case 'tapPlayer': {
       // Rule 4: a player who's already picked (in any slot) does nothing. To change a pick,
       // tap its slot then another player, or × it. (Swapping from the list confused people.)

@@ -1,14 +1,17 @@
+import { AnimatedChipStrip } from '../../components/ui/AnimatedChipStrip'
 import { Link } from '@tanstack/react-router'
 import { HeaderBand } from '../../components/ui/HeaderBand'
 import { AlertIcon, BackIcon, FlagIcon, GearIcon, RedoIcon, ResetIcon, TrophyIcon, UndoIcon } from '../../components/ui/icons'
 import { Button } from '../../components/ui/primitives'
 import { initials } from './avatarStyle'
 import { Court } from './Court'
-import { GamePointBadge, GamePointToast } from './GamePointToast'
+import { GamePointBadge, ScoreToast } from './ScoreToast'
 import { EMPTY_SLOT, screenScore, teamOn, type SideKey } from './game'
 import { TEAM_COLORS, type TeamId } from './schema'
 import { ModeSwitch, NoSessionOverlay, PickOverlay, RulesTile, SessionTile } from './ScoreboardParts'
-import { colorName, type ScoreboardView } from './scoreboardView'
+import { colorName, toastColors, type ScoreboardView } from './scoreboardView'
+import { viewSide } from './view'
+import { useCrossSlide } from './motion'
 
 const SIDES: SideKey[] = ['left', 'right']
 
@@ -20,7 +23,9 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
   const nameOf = (id: string) => v.byId.get(id)?.name ?? '?'
   const teamInitials = (team: TeamId) =>
     court.teams[team].ids.map((id) => (id === EMPTY_SLOT ? '?' : initials(nameOf(id)))).join(' · ')
-  const newestRally = v.rallies[0]?.number
+  // Score buttons left to right; they slide past each other whenever they change sides.
+  const order = SIDES.map((side) => teamOn(court, viewSide(side, v.view)))
+  const slideRef = useCrossSlide(order, { ...v.buttonSlide, onTop: 'a' })
 
   return (
     <div className={`flex-1 flex-col ${className}`}>
@@ -44,8 +49,8 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
         <RulesTile config={config} onClick={v.onOpenRules} />
       </HeaderBand>
 
-      {/* pt leaves room for the ⇆ button sticking out above the court. */}
-      <div className="flex flex-1 flex-col px-3 pt-7 pb-2">
+      {/* pt leaves room for the ⇆ button sticking out ~14px above the court card (and the deuce ring). */}
+      <div className="flex flex-1 flex-col px-3 pt-5 pb-2">
         <Court
           court={court}
           byId={v.byId}
@@ -54,12 +59,14 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
           onSwapPartners={v.onSwapPartners}
           onSwapSides={v.onSides}
           onChangeServer={v.started ? undefined : v.onServer}
-          glow={v.gamePoint && { team: v.gamePoint.team, fast: !!v.gamePoint.toast }}
-          toast={
-            v.gamePoint?.toast && (
-              <GamePointToast key={v.gamePoint.toast.id} toast={v.gamePoint.toast} color={config.teamColors[v.gamePoint.team]} dim />
-            )
-          }
+          view={v.courtView}
+          chipView={v.view}
+          motion={v.courtMotion}
+          flip={v.flip}
+          onFlipView={v.onFlipView}
+          gamePoint={v.gamePoint}
+          deuce={v.deuce}
+          toast={v.toast && <ScoreToast key={v.toast.id} toast={v.toast} {...toastColors(v)} dim />}
           overlay={
             !session ? (
               <NoSessionOverlay onStart={v.onNewSession} />
@@ -103,14 +110,16 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
           </p>
         )}
 
-        {/* Scores: tapping a side records a rally won by the team on that side */}
+        {/* Scores: tapping a side records a rally won by the team drawn on that side of the
+            court (Facing referee turns the court, so the buttons follow it). */}
         <div className="flex min-h-[60px] flex-1 gap-2.5">
-          {SIDES.map((side) => {
-            const team = teamOn(court, side)
-            const gamePoint = v.gamePoint?.team === team
+          {order.map((team) => {
+            const gamePoint = v.gamePoint === team
             return (
               <button
-                key={side}
+                // Keyed by team, so each button keeps its team while it slides.
+                key={team}
+                ref={slideRef(team)}
                 type="button"
                 onClick={() => v.onRally(team)}
                 // Without a session the tap opens New session instead.
@@ -144,26 +153,28 @@ export function ScoreboardPhone({ v, className = '' }: { v: ScoreboardView; clas
               onClick={v.onOpenHistory}
             />
           </div>
-          {v.rallies.length > 0 ? (
-            <div className="scrollbar-always flex gap-1.5 overflow-x-auto p-1 pb-1.5">
-              {v.rallies.map(({ step, number }) => (
+          {/* Newest on the left: a new rally pops in, Undo pops it out. */}
+          <AnimatedChipStrip
+            empty={<p className="flex h-10 items-center text-sm text-faint">Tap a team's score to log the first rally</p>}
+            gap={6}
+            className="scrollbar-always overflow-x-auto p-1 pb-1.5"
+            items={v.rallies.map(({ step, number }) => ({
+              key: String(number),
+              render: (latest) => (
                 <button
-                  key={number}
                   type="button"
                   onClick={() => v.onOpenRally(number)}
-                  aria-label={`Rally ${number}: ${screenScore(step.after)}`}
-                  className={`flex h-8 shrink-0 items-center rounded-[9px] px-3 text-sm font-extrabold text-white tabular-nums active:opacity-80 ${
-                    number === newestRally ? 'shadow-[0_0_0_2px_#fff,0_0_0_4px_var(--color-ink)]' : ''
+                  aria-label={`Rally ${number}: ${screenScore(step.after, v.view)}`}
+                  className={`flex h-8 shrink-0 items-center rounded-[9px] px-3 text-sm font-extrabold text-white tabular-nums transition-shadow duration-[120ms] active:opacity-80 ${
+                    latest ? 'shadow-[0_0_0_2px_#fff,0_0_0_4px_var(--color-ink)]' : ''
                   }`}
                   style={{ backgroundColor: TEAM_COLORS[config.teamColors[step.event.winner]] }}
                 >
-                  {screenScore(step.after)}
+                  {screenScore(step.after, v.view)}
                 </button>
-              ))}
-            </div>
-          ) : (
-            <p className="flex h-10 items-center text-sm text-faint">Tap a team's score to log the first rally</p>
-          )}
+              ),
+            }))}
+          />
         </div>
       </div>
     </div>

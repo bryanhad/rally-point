@@ -1,7 +1,10 @@
 // The data and actions a scoreboard layout (phone or tablet) receives from the Scoreboard page.
-import type { CourtState, RallyStep } from './game'
+import { otherTeam, teamOn, type CourtState, type RallyStep } from './game'
+import { viewSide } from './view'
+import type { FlipPhase } from './motion'
+import type { CourtMotion } from './useCourtMotion'
 import { TEAM_COLORS, type Config, type HistoryEntry, type Player, type Session, type TeamColor, type TeamId } from './schema'
-import type { GamePointToastState } from './useGamePointToast'
+import type { ScoreToastState } from './useScoreToast'
 
 export type NumberedRally = { step: RallyStep; number: number }
 
@@ -11,6 +14,17 @@ export type ScoreboardView = {
   court: CourtState
   byId: Map<string, Player>
   config: Config
+  // Referee view / Facing referee. Score buttons, blocks and score text follow it at once, so
+  // ending the flip early never moves a button under a finger.
+  view: Config['view']
+  // What the court card draws right now (the old view until the flip is edge-on), and the flip.
+  courtView: Config['view']
+  flip: FlipPhase
+  // The last forward action on the court, for its feedback animation.
+  courtMotion: CourtMotion | null
+  // How the score buttons slide when this action moves them to the other side (0: jump).
+  buttonSlide: { duration: number; delay: number }
+  onFlipView: () => void
   session: Session | null
   // All saved players (for the Session tile).
   players: Player[]
@@ -21,9 +35,12 @@ export type ScoreboardView = {
   blocked: boolean
   emptySpot: boolean
   reachedTotal: boolean
-  // The team on game point (from the score, so Undo/Redo/reload restore it silently), and the
-  // toast while a scoring tap's announcement is up.
-  gamePoint: { team: TeamId; toast: GamePointToastState | null } | null
+  // The team on game point, and whether deuce has been reached: from the score, so Undo/Redo/
+  // reload restore them silently.
+  gamePoint: TeamId | null
+  deuce: boolean
+  // The GAME POINT / DEUCE toast while a scoring tap's announcement is up.
+  toast: ScoreToastState | null
   // Tablet: the Court preview is open (the toast and dim move onto its court).
   courtOpen: boolean
   canUndo: boolean
@@ -56,6 +73,15 @@ export type ScoreboardView = {
   onNewSession: () => void
   onPickPlayers: () => void
   onSamePlayers: () => void
+}
+
+// The toast's colours: the team on game point, and the two rackets of DEUCE (the team drawn on
+// the left of the screen first).
+export function toastColors(v: Pick<ScoreboardView, 'court' | 'config' | 'view' | 'toast'>) {
+  const { court, config, view, toast } = v
+  const left = teamOn(court, viewSide('left', view))
+  const rackets = [config.teamColors[left], config.teamColors[otherTeam(left)]] as const
+  return { color: toast?.kind === 'game-point' ? config.teamColors[toast.team] : rackets[0], rackets }
 }
 
 export const colorName = (config: Config, team: TeamId) => {
